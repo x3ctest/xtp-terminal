@@ -1,0 +1,199 @@
+.webview-container {
+  padding: 20px;
+  color: var(--vscode-foreground);
+  background-color: var(--vscode-editor-background);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  line-height: 1.4;
+}
+.vscode-input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 4px;
+  background-color: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  border: 1px solid var(--vscode-input-border);
+  border-radius: 2px;
+}
+
+.vscode-input:focus {
+  border-color: var(--vscode-focusBorder);
+  outline: none;
+}
+
+.vscode-button {
+  background-color: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border: 1px solid var(--vscode-button-border);
+  padding: 4px 12px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.vscode-button:hover {
+  background-color: var(--vscode-button-hoverBackground);
+}
+
+.vscode-list {
+  background-color: var(--vscode-list-activeSelectionBackground);
+}
+
+.list-item {
+  padding: 8px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.list-item:hover {
+  background-color: var(--vscode-list-hoverBackground);
+}
+.vscode-select {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 4px;
+  background-color: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  border: 1px solid var(--vscode-input-border);
+  border-radius: 2px;
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23ffffff' d='M3.5 4l2.5 2.5 2.5-2.5h-5z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 4px center;
+  padding-right: 20px;
+}
+
+.vscode-select:focus {
+  border-color: var(--vscode-focusBorder);
+  outline: none;
+}
+
+.vscode-select option {
+  background-color: var(--vscode-dropdown-background);
+  color: var(--vscode-dropdown-foreground);
+  padding: 2px 4px;
+}
+
+.vscode-select:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  background-color: var(--vscode-input-background-disabled);
+}
+
+.vscode-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vscode-radio {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+.vscode-radio input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.vscode-radio .radio-indicator {
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--vscode-input-border);
+  border-radius: 50%;
+  background-color: var(--vscode-input-background);
+  margin-right: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.vscode-radio input:checked + .radio-indicator {
+  border-color: var(--vscode-focusBorder);
+}
+
+.vscode-radio input:checked + .radio-indicator::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--vscode-foreground);
+}
+
+.vscode-radio input:focus + .radio-indicator {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+}
+
+.vscode-radio input:disabled + .radio-indicator {
+  opacity: 0.6;
+  cursor: not-allowed;
+  border-color: var(--vscode-input-border);
+  background-color: var(--vscode-input-background-disabled);
+}
+
+.vscode-radio .radio-label {
+  color: var(--vscode-foreground);
+  user-select: none;
+}
+
+.vscode-radio input:disabled ~ .radio-label {
+  color: var(--vscode-disabledForeground);
+  cursor: not-allowed;
+}
+
+/* 内嵌图标样式 */
+.file-input-wrapper {
+  position: relative;
+  /* 关键：让容器与输入框保持相同的边框样式 */
+  border: 1px solid transparent;
+  border-radius: 2px;
+}
+
+/* 输入框聚焦时，让容器显示焦点边框（覆盖输入框自身边框） */
+.file-input:focus + .file-select-icon + .file-input-wrapper::after,
+.file-input:focus {
+  border-color: var(--vscode-focusBorder);
+}
+
+.file-input {
+  /* 移除输入框自身边框，由外层容器统一控制 */
+  border: none;
+  padding-right: 32px; /* 为内部图标预留空间 */
+}
+
+.file-select-icon {
+  position: absolute;
+  right: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  margin: 0;
+  background: none;
+  border: none;
+  color: var(--vscode-input-foreground);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.8;
+}
+
+.file-select-icon:hover {
+  opacity: 1;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+
+.file-select-icon:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}

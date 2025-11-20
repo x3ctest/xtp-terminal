@@ -1,0 +1,380 @@
+{
+  "name": "xtp-terminal",
+  "displayName": "x3ctest terminal platform",
+  "publisher": "x3ctest",
+  "version": "0.0.1",
+  "description": "An interactive terminal tool",
+  "extensionKind": [
+    "ui"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/x3ctest/xtp-terminal.git"
+  },
+  "homepage": "https://github.com/x3ctest/xtp-terminal/README.md",
+  "bugs": {
+    "url": "https://github.com/x3ctest/xtp-terminal/issues"
+  },
+  "icon": "./assets/logo.png",
+  "l10n": "./l10n",
+  "keywords": [
+    "serial",
+    "ssh",
+    "telnet",
+    "com",
+    "terminal",
+    "console"
+  ],
+  "pricing": "Free",
+  "engines": {
+    "vscode": "^1.104.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "extensionPack": [
+    "x3ctest.scriptnotebook"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "XTPTerminalContainerView",
+          "title": "%entryView.title%",
+          "icon": "$(debug-disconnect)"
+        }
+      ]
+    },
+    "views": {
+      "XTPTerminalContainerView": [
+        {
+          "name": "%TreeView.TerminalList%",
+          "id": "xtp.terminal.terminalListTree",
+          "initialSize": 20
+        },
+        {
+          "name": "Terminal Configuration",
+          "contextualTitle": "Terminal Configuration",
+          "id": "xtp.terminal.configView",
+          "type": "webview",
+          "initialSize": 20
+        },
+        {
+          "name": "%TreeView.logs%",
+          "id": "xtp.terminal.logs",
+          "initialSize": 50
+        },
+        {
+          "name": "%TreeView.scriptsNotebooks%",
+          "id": "xtp.terminal.scriptsNotebooks",
+          "initialSize": 20
+        }
+      ]
+    },
+    "terminal": {
+      "profiles": [
+        {
+          "id": "xtp.view.Terminal",
+          "title": "%xtp.terminal.title%"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "xtp.terminal.terminalListTree.refresh",
+          "when": "view == xtp.terminal.terminalListTree",
+          "group": "navigation@1"
+        },
+        {
+          "command": "xtp.terminal.terminalListTree.add",
+          "when": "view == xtp.terminal.terminalListTree",
+          "group": "navigation@2"
+        },
+        {
+          "command": "xtp.terminal.openTerminalConfiguration",
+          "when": "view == xtp.terminal.terminalListTree",
+          "group": "navigation@3"
+        },
+        {
+          "command": "xtp.terminal.configView.edit",
+          "when": "view == xtp.terminal.configView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "xtp.terminal.openLogConfigaration",
+          "when": "view == xtp.terminal.logs",
+          "group": "navigation@1"
+        },
+        {
+          "command": "xtp.terminal.revealLogs",
+          "when": "view == xtp.terminal.logs",
+          "group": "navigation@2"
+        },
+        {
+          "command": "xtp.terminal.createScriptNotebook",
+          "when": "view == xtp.terminal.scriptsNotebooks",
+          "group": "navigation@1"
+        },
+        {
+          "command": "xtp.terminal.openScriptConfigaration",
+          "when": "view == xtp.terminal.scriptsNotebooks",
+          "group": "navigation@2"
+        },
+        {
+          "command": "xtp.terminal.revealScriptNoteBooks",
+          "when": "view == xtp.terminal.scriptsNotebooks",
+          "group": "navigation@3"
+        },
+        {
+          "command": "xtp.terminal.clearTerminal",
+          "when": "view == terminal",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "xtp.terminal.terminalListTree.connect",
+          "when": "view == xtp.terminal.terminalListTree",
+          "group": "inline@1"
+        },
+        {
+          "command": "xtp.terminal.terminalListTree.startSaveLog",
+          "when": "view == xtp.terminal.terminalListTree && viewItem =~ /:stopped$/",
+          "group": "inline@2"
+        },
+        {
+          "command": "xtp.terminal.terminalListTree.stopSaveLog",
+          "when": "view == xtp.terminal.terminalListTree && viewItem =~ /:running$/",
+          "group": "inline@3"
+        },
+        {
+          "command": "xtp.terminal.terminalListTree.delete",
+          "when": "view == xtp.terminal.terminalListTree",
+          "group": "inline@5"
+        },
+        {
+          "command": "xtp.terminal.configView.edit",
+          "when": "view == xtp.terminal.configView",
+          "group": "inline"
+        },
+        {
+          "command": "xtp.terminal.deleteResource",
+          "when": "view == xtp.terminal.logs",
+          "group": "inline"
+        },
+        {
+          "command": "xtp.terminal.deleteResource",
+          "when": "view == xtp.terminal.scriptsNotebooks",
+          "group": "inline"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "xtp.terminal.terminalListTree.add",
+        "title": "%command.connection.add%",
+        "icon": "$(add)"
+      },
+      {
+        "command": "xtp.terminal.terminalListTree.refresh",
+        "title": "%command.connection.refresh%",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "xtp.terminal.openTerminalConfiguration",
+        "title": "%command.connection.global.configuration%",
+        "icon": "$(gear)"
+      },
+      {
+        "command": "xtp.terminal.terminalListTree.connect",
+        "title": "%command.connection.connect%",
+        "icon": "$(run)"
+      },
+      {
+        "command": "xtp.terminal.configView.edit",
+        "title": "%command.connection.edit%",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "xtp.terminal.terminalListTree.startSaveLog",
+        "icon": "$(save-as)",
+        "title": "%commands.startSaveLog%"
+      },
+      {
+        "command": "xtp.terminal.terminalListTree.stopSaveLog",
+        "icon": "$(stop-circle)",
+        "title": "%commands.stopSaveLog%"
+      },
+      {
+        "command": "xtp.terminal.terminalListTree.delete",
+        "title": "%command.connection.delete%",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "xtp.terminal.openLogConfigaration",
+        "icon": "$(gear)",
+        "title": "%commands.openLogConfigaration%"
+      },
+      {
+        "command": "xtp.terminal.revealLogs",
+        "icon": "$(file-directory)",
+        "title": "%commands.revealInExplorer%"
+      },
+      {
+        "command": "xtp.terminal.openScriptConfigaration",
+        "icon": "$(gear)",
+        "title": "%commands.openScriptConfigaration%"
+      },
+      {
+        "command": "xtp.terminal.revealScriptNoteBooks",
+        "icon": "$(file-directory)",
+        "title": "%commands.revealInExplorer%"
+      },
+      {
+        "icon": "$(arrow-right)",
+        "command": "xtp.terminal.openTreeItemResource",
+        "title": "%commands.openTreeItemResource%"
+      },
+      {
+        "command": "xtp.terminal.revealInExplorer",
+        "icon": "$(file-directory)",
+        "title": "%commands.revealInExplorer%"
+      },
+      {
+        "command": "xtp.terminal.createScriptNotebook",
+        "icon": "$(new-file)",
+        "title": "%commands.createScriptNotebook%"
+      },
+      {
+        "command": "xtp.terminal.deleteResource",
+        "icon": "$(trash)",
+        "title": "%commands.delete%"
+      },
+      {
+        "command": "xtp.terminal.viewReadOnlyDocument",
+        "title": "%commands.viewReadOnlyDocument%"
+      },
+      {
+        "command": "xtp.terminal.startSaveLog",
+        "icon": "$(save-as)",
+        "title": "%commands.startSaveLog%"
+      },
+      {
+        "command": "xtp.terminal.stopSaveLog",
+        "icon": "$(stop-circle)",
+        "title": "%commands.stopSaveLog%"
+      },
+      {
+        "command": "xtp.terminal.clearTerminal",
+        "icon": "$(clear-all)",
+        "title": "%commands.clearTerminal%"
+      },
+      {
+        "command": "doSomething",
+        "icon": "$(play)",
+        "title": "XTP test: do something"
+      }
+    ],
+    "configuration": {
+      "title": "XTP Terminal",
+      "properties": {
+        "xtp.terminal.view.showEditArea": {
+          "title": "%configurations.view.position%",
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "%configurations.view.position.description%"
+        },
+        "xtp.terminal.log.savePath": {
+          "title": "%configurations.log.savePath.title%",
+          "type": "string",
+          "markdownDescription": "%configurations.log.savePath.description%"
+        },
+        "xtp.terminal.log.size": {
+          "title": "%configurations.log.size.title%",
+          "type": "number",
+          "markdownDescription": "%configurations.log.size.description%"
+        },
+        "xtp.terminal.script.savePath": {
+          "title": "%configurations.script.savePath.title%",
+          "type": "string",
+          "markdownDescription": "%configurations.script.savePath.description%"
+        },
+        "xtp.terminal.log.defaultAddingTimeStamp": {
+          "title": "%configurations.log.defaultAddingTimeStamp.title%",
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "%configurations.log.defaultAddingTimeStamp.description%"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "lib": "webpack --config webpack.config.lib.js --progress"
+  },
+  "devDependencies": {
+    "@types/glob": "^8.1.0",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "16.x",
+    "@types/ssh2": "^0.5.43",
+    "@types/vscode": "^1.104.0",
+    "@typescript-eslint/eslint-plugin": "^5.59.1",
+    "@typescript-eslint/parser": "^5.59.1",
+    "@vscode/l10n-dev": "^0.0.26",
+    "@vscode/test-electron": "^2.3.0",
+    "copy-webpack-plugin": "^9.0.1",
+    "css-loader": "^3.6.0",
+    "electron": "^25.0.1",
+    "eslint": "^8.39.0",
+    "file-loader": "^6.0.0",
+    "glob": "^8.1.0",
+    "html-webpack-plugin": "^5.5.3",
+    "mocha": "^10.2.0",
+    "path-browserify": "^1.0.1",
+    "postcss": "^8.2.1",
+    "process": "^0.11.10",
+    "style-loader": "^1.3.0",
+    "ts-loader": "^9.5.2",
+    "typescript": "^5.0.4",
+    "url-loader": "^4.1.0",
+    "vue-loader": "^15.11.1",
+    "vue-style-loader": "^4.1.2",
+    "vue-template-compiler": "^2.7.16",
+    "webpack": "^5.101.0",
+    "webpack-cli": "^6.0.1"
+  },
+  "dependencies": {
+    "@vscode/codicons": "^0.0.33",
+    "@vscode/l10n": "^0.0.14",
+    "@vscode/webview-ui-toolkit": "^1.4.0",
+    "colors": "^1.4.0",
+    "element-ui": "^2.15.14",
+    "net": "^1.0.2",
+    "pretty-bytes": "^5.3.0",
+    "progress-stream": "^2.0.0",
+    "readable-stream": "1.1.x",
+    "routington": "^1.0.3",
+    "serialport": "^11.0.0",
+    "ssh2": "^1.17.0",
+    "supports-color": "^9.0.1",
+    "telnet-client": "^2.2.6",
+    "telnet-stream": "^1.1.0",
+    "ts-node": "^10.9.2",
+    "umy-table": "1.0.8",
+    "vue": "^2.7.16",
+    "vue-i18n": "^8.28.2",
+    "vue-router": "^3.4.1",
+    "vue-style-loader": "^4.1.3",
+    "xregexp": "2.0.0",
+    "zeromq": "^6.5.0"
+  }
+}
