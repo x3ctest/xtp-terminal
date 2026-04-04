@@ -127,7 +127,7 @@ class SSHSession extends BaseSession {
     }
 
     public close(): void {
-
+        this.sshclient.end();
     }
 
     sshconfig: SshSessionConfiguration;

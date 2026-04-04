@@ -1,14 +1,8 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 
-//import { pickConfiguration, pickSerialPort, updateSerialPortProvider } from './terminalConfigurationView';
-import { terminalManager } from "./terminal/terminalManager";
-import { setTernimalRecordingLog } from './ui/terminal/contextManager';
-//import { ViewManager } from "./ui/viewManager";
-//import { connectConfiguration } from "./ui/editpanel/connectionConfiguration";
 import { l10n } from 'vscode';
 import { getLogDefaultAddingTimeStamp, getLogDirUri, getScriptDirUri, getLogSizeLimit, logSettingId, terminalSettingId,logSaveFileSizeLimitId, scriptSettingId } from './settingManager';
-//import { listSerialPort } from "./sessions/serial/serialSession";
 
 function registerCommands(context: vscode.ExtensionContext) {
     context.subscriptions.push(
@@ -27,21 +21,7 @@ function registerCommands(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand(
             "xtp.terminal.openTerminalConfiguration",
             () => { vscode.commands.executeCommand("workbench.action.openSettings", terminalSettingId); })
-    )
-
-    /*context.subscriptions.push(
-        vscode.commands.registerCommand(
-            "xtp.terminal.startSaveLog",
-            startSaveLog
-        )
     );
-
-    context.subscriptions.push(
-        vscode.commands.registerCommand(
-            "xtp.terminal.stopSaveLog",
-            stopSaveLog
-        )
-    );*/
 
     context.subscriptions.push(
         vscode.commands.registerCommand(
@@ -56,14 +36,7 @@ function registerCommands(context: vscode.ExtensionContext) {
             revealInExplorer
         )
     );
-
-    context.subscriptions.push(
-        vscode.commands.registerCommand(
-            "xtp.terminal.createScriptNotebook",
-            createScriptNotebook
-        )
-    );
-
+    
     context.subscriptions.push(
         vscode.commands.registerCommand(
             "xtp.terminal.revealScriptNoteBooks",
@@ -108,6 +81,27 @@ function registerCommands(context: vscode.ExtensionContext) {
 
     vscode.commands.registerCommand("doSomething", async (context) => {
     });
+
+    // 打开网络拓扑编辑器
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "xtp.terminal.openNetworkTopologyEditor",
+            async () => {
+                await vscode.commands.executeCommand("xtp.network.topology");
+            }
+        )
+    );
+    
+    // 关闭终端
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "xtp.terminal.close",
+            (terminalName: string) => {
+                const { terminalManager } = require('./terminal/terminalManager');
+                terminalManager.close(terminalName);
+            }
+        )
+    );
 }
 
 /*async function openConnectConfiguration(context?: any) {
@@ -166,7 +160,7 @@ async function createScriptNotebook() {
     if (!fileName) {
         return false;
     }
-    const scriptNotebookFile = vscode.Uri.joinPath(getScriptDirUri(), fileName + ".scrnb");
+    const scriptNotebookFile = vscode.Uri.joinPath(getScriptDirUri(), fileName + ".xts");
     fs.writeFileSync(scriptNotebookFile.fsPath, "");
     vscode.commands.executeCommand("vscode.open", scriptNotebookFile);
 }

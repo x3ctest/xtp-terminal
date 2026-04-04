@@ -2,7 +2,7 @@
   "name": "xtp-terminal",
   "displayName": "x3ctest terminal platform",
   "publisher": "x3ctest",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "An interactive terminal tool",
   "extensionKind": [
     "ui"
@@ -57,21 +57,9 @@
           "initialSize": 20
         },
         {
-          "name": "Terminal Configuration",
-          "contextualTitle": "Terminal Configuration",
-          "id": "xtp.terminal.configView",
-          "type": "webview",
-          "initialSize": 20
-        },
-        {
           "name": "%TreeView.logs%",
           "id": "xtp.terminal.logs",
           "initialSize": 50
-        },
-        {
-          "name": "%TreeView.scriptsNotebooks%",
-          "id": "xtp.terminal.scriptsNotebooks",
-          "initialSize": 20
         }
       ]
     },
@@ -91,19 +79,9 @@
           "group": "navigation@1"
         },
         {
-          "command": "xtp.terminal.terminalListTree.add",
-          "when": "view == xtp.terminal.terminalListTree",
-          "group": "navigation@2"
-        },
-        {
           "command": "xtp.terminal.openTerminalConfiguration",
           "when": "view == xtp.terminal.terminalListTree",
-          "group": "navigation@3"
-        },
-        {
-          "command": "xtp.terminal.configView.edit",
-          "when": "view == xtp.terminal.configView",
-          "group": "navigation@1"
+          "group": "navigation@2"
         },
         {
           "command": "xtp.terminal.openLogConfigaration",
@@ -114,21 +92,6 @@
           "command": "xtp.terminal.revealLogs",
           "when": "view == xtp.terminal.logs",
           "group": "navigation@2"
-        },
-        {
-          "command": "xtp.terminal.createScriptNotebook",
-          "when": "view == xtp.terminal.scriptsNotebooks",
-          "group": "navigation@1"
-        },
-        {
-          "command": "xtp.terminal.openScriptConfigaration",
-          "when": "view == xtp.terminal.scriptsNotebooks",
-          "group": "navigation@2"
-        },
-        {
-          "command": "xtp.terminal.revealScriptNoteBooks",
-          "when": "view == xtp.terminal.scriptsNotebooks",
-          "group": "navigation@3"
         },
         {
           "command": "xtp.terminal.clearTerminal",
@@ -153,52 +116,27 @@
           "group": "inline@3"
         },
         {
-          "command": "xtp.terminal.terminalListTree.delete",
-          "when": "view == xtp.terminal.terminalListTree",
-          "group": "inline@5"
-        },
-        {
-          "command": "xtp.terminal.configView.edit",
-          "when": "view == xtp.terminal.configView",
-          "group": "inline"
-        },
-        {
           "command": "xtp.terminal.deleteResource",
           "when": "view == xtp.terminal.logs",
-          "group": "inline"
-        },
-        {
-          "command": "xtp.terminal.deleteResource",
-          "when": "view == xtp.terminal.scriptsNotebooks",
           "group": "inline"
         }
       ]
     },
     "commands": [
       {
-        "command": "xtp.terminal.terminalListTree.add",
-        "title": "%command.connection.add%",
-        "icon": "$(add)"
-      },
-      {
         "command": "xtp.terminal.terminalListTree.refresh",
         "title": "%command.connection.refresh%",
         "icon": "$(refresh)"
       },
       {
-        "command": "xtp.terminal.openTerminalConfiguration",
-        "title": "%command.connection.global.configuration%",
-        "icon": "$(gear)"
+          "command": "xtp.terminal.openTerminalConfiguration",
+          "title": "%command.connection.global.configuration%",
+          "icon": "$(gear)"
       },
       {
         "command": "xtp.terminal.terminalListTree.connect",
         "title": "%command.connection.connect%",
         "icon": "$(run)"
-      },
-      {
-        "command": "xtp.terminal.configView.edit",
-        "title": "%command.connection.edit%",
-        "icon": "$(edit)"
       },
       {
         "command": "xtp.terminal.terminalListTree.startSaveLog",
@@ -209,11 +147,6 @@
         "command": "xtp.terminal.terminalListTree.stopSaveLog",
         "icon": "$(stop-circle)",
         "title": "%commands.stopSaveLog%"
-      },
-      {
-        "command": "xtp.terminal.terminalListTree.delete",
-        "title": "%command.connection.delete%",
-        "icon": "$(trash)"
       },
       {
         "command": "xtp.terminal.openLogConfigaration",
@@ -278,6 +211,23 @@
         "command": "doSomething",
         "icon": "$(play)",
         "title": "XTP test: do something"
+      },
+      {
+        "command": "xtp.terminal.openNetworkTopologyEditor",
+        "title": "打开网络拓扑编辑器",
+        "icon": "$(symbol-array)"
+      }
+    ],
+    "customEditors": [
+      {
+        "viewType": "xtp.terminal.networkTopologyEditor",
+        "displayName": "网络拓扑编辑器",
+        "selector": [
+          {
+            "filenamePattern": "*.tbdx"
+          }
+        ],
+        "priority": "default"
       }
     ],
     "configuration": {
@@ -334,6 +284,7 @@
     "copy-webpack-plugin": "^9.0.1",
     "css-loader": "^3.6.0",
     "electron": "^25.0.1",
+    "electron-rebuild": "^3.2.9",
     "eslint": "^8.39.0",
     "file-loader": "^6.0.0",
     "glob": "^8.1.0",

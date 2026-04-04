@@ -2,11 +2,9 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { l10n } from 'vscode';
-import crypto from 'crypto';
 import { EventEmitter, ExtensionTerminalOptions, Terminal, TerminalDimensions, TerminalEditorLocationOptions, TerminalLocation, TerminalSplitLocationOptions, ThemeColor, ThemeIcon, Uri, window } from "vscode";
 import { ISessionCallback, BaseSession } from "../sessions/basic/BasicSession";
 import { SessionFactory, ISessionConfiguration } from '../sessions/SessionFactory';
-import { startTerminalRpcDealer, DealerHandle, closeDealer } from '../rpcserver/xtpserver';
 import { TerminalContentBuffer } from './terminalContentBuffer';
 
 interface VtyTerminalOptions {
@@ -40,7 +38,7 @@ class VtyTerminal {
     private changeNameEmitter = new EventEmitter<string>();
     private onOpen?: (initialDimensions?: TerminalDimensions) => void;
     private onInput?: (data: string) => void;
-    private onClose?: () => void;
+    private onClose?: () => void | Promise<void>;
     private onSetDimensions?: (dimensions: TerminalDimensions) => void;
     private opts: ExtensionTerminalOptions;
     private terminalInstance: Terminal | undefined;
@@ -48,7 +46,7 @@ class VtyTerminal {
     state: { loging: boolean; logSize:number; timeStamp: boolean; hex: boolean;};
     private logPath: string;
     private contentBuffer = new TerminalContentBuffer();
-    private rpcDealerHandle: DealerHandle;
+    //private rpcDealerHandle: DealerHandle;
 
     constructor(name: string, opts?: VtyTerminalOptions) {
         this.state = {
@@ -67,8 +65,8 @@ class VtyTerminal {
                 open: (initialDimensions?: vscode.TerminalDimensions) => {
                     if (this.onOpen) { this.onOpen(initialDimensions); }
                 },
-                close: () => {
-                    if (this.onClose) { this.onClose(); }
+                close: async () => {
+                    if (this.onClose) { await this.onClose(); }
                 },
                 handleInput: (data: string) => {
                     if (this.onInput) { this.onInput(data); }
@@ -91,6 +89,16 @@ class VtyTerminal {
     setBindSession(session: BaseSession) {
         this.bindSession = session;
     }
+    
+    /**
+     * 关闭终端
+     */
+    close() {
+        if (this.terminalInstance) {
+            this.terminalInstance.dispose();
+            this.terminalInstance = undefined;
+        }
+    }
 
     setOnOpen(callback?: (initialDimensions: TerminalDimensions | undefined) => void) {
         this.onOpen = callback;
@@ -100,7 +108,7 @@ class VtyTerminal {
         this.onInput = callback;
     }
 
-    setOnClose(callback?: () => void) {
+    setOnClose(callback?: () => void | Promise<void>) {
         this.onClose = callback;
     }
 
@@ -122,7 +130,7 @@ class VtyTerminal {
             else {
                 const msg = l10n.t('xtp.terminal.vtp.connected.failed');
                 vscode.window.showErrorMessage(`${this.name} ` + msg);
-                this.onClose();    
+                //this.onClose();    
             }
         } catch (err) {
             const msg = l10n.t('xtp.terminal.vtp.connected.failed');
@@ -150,11 +158,13 @@ class VtyTerminal {
             "- Press \x1b[95m<Return>\x1b[0m to exit tab\r\n" +
             "- Press \x1b[95mR\x1b[0m to restart session\r\n");
         this.setOnInput(
-            (data) => {
+            async (data) => {
                 switch (data) {
                     case '\r': {
                         this.terminalInstance.dispose();
-                        this.onClose();
+                        if (this.onClose) {
+                            await this.onClose();
+                        }
                         break;
                     }
                     case 'R': {
@@ -189,9 +199,9 @@ class VtyTerminal {
         }
     }
 
-    close(n: number | void) {
+    /*close(n: number | void) {
         this.closeEmitter.fire(n);
-    }
+    }*/
 
     get name(): string {
         return this.opts.name;
@@ -225,20 +235,24 @@ class VtyTerminal {
     }
 
     private log(data: Buffer) {
-        fs.stat(this.logPath, (err, stats) => {
+        fs.stat(this.logPath, async(err, stats) =>  {
             if (stats.size >= this.state.logSize) {
                 this.logPath = path.dirname(this.logPath) + "/" + this.name + "_" + this.getLogFileTime() + ".log";
                 fs.writeFileSync(this.logPath, "");
             }
         });
-        if (this.state.timeStamp) {
-            fs.appendFileSync(
-                this.logPath,
-                data.toString()
-                    .replaceAll('\r', '')
-                    .replaceAll('\n', '\n' + this.getTimeStamp()));
-        } else {
-            fs.appendFileSync(this.logPath, data.toString().replaceAll('\r', ''));
+        try {
+            if (this.state.timeStamp) {
+                fs.appendFileSync(
+                    this.logPath,
+                    data.toString()
+                        .replaceAll('\r', '')
+                        .replaceAll('\n', '\n' + this.getTimeStamp()));
+            } else {
+                fs.appendFileSync(this.logPath, data.toString().replaceAll('\r', ''));
+            }
+        } catch(err) {
+            console.log(err.message);
         }
     }
 
@@ -261,11 +275,18 @@ class VtyTerminal {
         return this.state.loging;
     }
 
-    private async doRpcCommand(rpcrequest: string): Promise<string> {
-        console.log(rpcrequest);
-        const jsonrequest = JSON.parse(rpcrequest);
+    /**
+     * 执行RPC命令
+     * @param rpcrequest RPC请求字符串
+     */
+    public async doRpcCommand(rpcrequest: string): Promise<string> {
+        let result = '';
 
-        switch (jsonrequest.method) {
+        try {
+            const jsonrequest = JSON.parse(rpcrequest);
+            const { method } = jsonrequest;
+
+            switch (method) {
             case "send": {
                 // 存储所有命令的结果
                 const cmdResults: string[] = [];
@@ -285,113 +306,129 @@ class VtyTerminal {
                 }
 
                 // 合并所有命令的结果并返回
-                return cmdResults.join("\n"); // 按换行符拼接结果
+                result = cmdResults.join("\n"); // 按换行符拼接结果
+                break;
             }
             case "get_buffer": {
                 const { count } = jsonrequest;
-                return this.contentBuffer.getLatestLines(count);
+                result = this.contentBuffer.getLatestLines(count);
+                break;
             }
             case "clear": {
                 this.contentBuffer.clear();
-                return `${this.opts.name} 已清空缓冲区`;
+                result = `${this.opts.name} 已清空缓冲区`;
+                break;
             }
              case "set_user_mark": {
                 this.contentBuffer.setExternalMark();
-                return `${this.opts.name} 已清空缓冲区`;
+                result = `${this.opts.name} 已清空缓冲区`;
+                break;
             }
             case "get_mark_content": {
-                return this.contentBuffer.getExternalMarkedLines();
+                result = this.contentBuffer.getExternalMarkedLines();
+                break;
             }
-            default: {
-                return `${this.opts.name} 未知命令: ${jsonrequest.method}`;
+
+            default:
+                result = `Unknown command: ${method}`;
+                break;
             }
+        } catch (error) {
+            result = `Error parsing RPC request: ${(error as Error).message}`;
         }
+        return result;
     }
 
-    // doRpcSend 保持不变（已正确实现单命令的异步等待）
+    /**
+     * 执行RPC发送并等待响应
+     * @param command 命令
+     * @param search 搜索的响应字符串
+     * @param timeout 超时时间（毫秒）
+     * @param nonewline 是否不添加换行
+     */
     private async doRpcSend(command: string, search: string, timeout: number = 1000, nonewline: boolean = false): Promise<string> {
-        return new Promise((resolve) => {
-            this.contentBuffer.setInternalMark();
-            this.bindSession.send(command);
-            if (!nonewline) {
-                this.bindSession.send("\r\n");
-            }
-
-            if (search) {
-                const regex = new RegExp(search, "g");
-                const timerId = setInterval(() => {
-                    const cmdResult = this.contentBuffer.getInternalMarkedLines();
-                    if (cmdResult.match(regex)) {
-                        clearInterval(timerId);
-                        clearTimeout(timeoutId);
-                        this.contentBuffer.resetInternalMark();
-                        resolve(cmdResult);
+        return new Promise((resolve, reject) => {
+            let response = '';
+            const startTime = Date.now();
+            
+            // 模拟响应处理，实际应该从终端的输出中捕获
+            const checkResponse = () => {
+                response = this.contentBuffer.getInternalMarkedLines();
+                // 使用正则表达式匹配search字符串
+                try {
+                    const regex = new RegExp(search);
+                    if (regex.test(response)) {
+                        resolve(response);
+                    } else if (Date.now() - startTime > timeout) {
+                        reject(new Error('RPC send timeout'));
+                    } else {
+                        setTimeout(checkResponse, 100);
                     }
-                }, 100);
-
-                // 超时控制
-                const timeoutId = setTimeout(() => {
-                    clearInterval(timerId); // 修复：必须清除定时器，避免内存泄漏
-                    const cmdResult = this.contentBuffer.getInternalMarkedLines();
-                    this.contentBuffer.resetInternalMark();
-                    resolve(cmdResult);
-                }, timeout);
-            } else {
-                // 无搜索条件时，直接返回当前标记的内容（根据实际需求调整）
-                // 注意：若命令执行需要时间，可能需要短暂等待或调整逻辑
-                const cmdResult = this.contentBuffer.getInternalMarkedLines();
-                this.contentBuffer.resetInternalMark();
-                resolve(cmdResult);
-            }
-        });
-    }
-
-    public static async create(name: string, terminalConfig: ITerminalConfiguration, pseudo: boolean = false, closeCallback: (terminal:string) => void, bInEditorArea: boolean = false) : Promise<VtyTerminal> {
-        let opts = { create: true, location: TerminalLocation.Panel };
-        if (bInEditorArea) {
-            opts.location = TerminalLocation.Editor;
-        }
-        const terminal = new VtyTerminal(name, opts);
-        terminal.setOnOpen(async () => {
-            const sessionCallbacks : ISessionCallback = {
-                onData: terminal.write,
-                onError: terminal.showOnError,
-                onClose: terminal.showOnReconnect
+                } catch (error) {
+                    // 如果正则表达式创建失败，回退到字符串包含匹配
+                    if (response.includes(search)) {
+                        resolve(response);
+                    } else if (Date.now() - startTime > timeout) {
+                        reject(new Error('RPC send timeout'));
+                    } else {
+                        setTimeout(checkResponse, 100);
+                    }
+                }
             };
             
-            const session : BaseSession = await SessionFactory.createSession(terminalConfig, sessionCallbacks, pseudo);
-            terminal.setBindSession(session);
-            terminal.openSession();
+            this.contentBuffer.setInternalMark();
+
+            // 发送命令
+            //this.write(Buffer.from(nonewline ? command : command + '\r\n'));
+            this.bindSession.send(nonewline ? command : command + '\r\n');
+            
+            // 启动响应检查
+            setTimeout(checkResponse, 100);
+        });
+    }
+
+    /**
+     * 创建VtyTerminal实例
+     * @param name 终端名称
+     * @param terminalConfig 终端配置
+     * @param pseudo 是否为伪终端
+     * @param closeCallback 关闭回调
+     * @param bInEditorArea 是否在编辑器区域显示
+     */
+    public static async create(name: string, terminalConfig?: ITerminalConfiguration, pseudo: boolean = false, closeCallback?: (terminal:string) => void, bInEditorArea: boolean = false) : Promise<VtyTerminal> {
+        const terminal = new VtyTerminal(name, {
+            create: !pseudo,
+            location: bInEditorArea ? TerminalLocation.Editor : undefined
         });
 
-        terminal.setOnClose(async () => {
-            try {
-                if (terminal.rpcDealerHandle) {
-                    await closeDealer(terminal.rpcDealerHandle);
-                }
-            } catch (err) {
-                console.error("关闭Dealer失败:", err);
-            } finally {
-                if (terminal.bindSession) { 
-                    terminal.bindSession.close(); 
-                    terminal.bindSession = null;              
-                }
-                closeCallback(terminal.opts.name);
-            }
-        });
+        // 设置关闭回调
+        if (closeCallback) {
+            terminal.setOnClose(() => {
+                closeCallback(name);
+            });
+        } else {
+            // 清理Worker
+            terminal.setOnClose(async () => {
+                const { terminalManager } = require('./terminalManager');
+                await terminalManager.remove(name);
+            });
+        }
 
-        terminal.show(); // 显示终端，触发onOpen
+        // 初始化会话
+        const sessionCallbacks: ISessionCallback = {
+            onData: terminal.write,
+            onError: terminal.showOnError,
+            onClose: terminal.showOnReconnect
+        };
+        const session = await SessionFactory.createSession(terminalConfig, sessionCallbacks, false);
+        terminal.setBindSession(session);
 
-        const projectPath = getCurrentProjectDir();
-        const instanceId = crypto.createHash('sha256').update(projectPath).digest('hex');
-
-        
-        terminal.rpcDealerHandle = await startTerminalRpcDealer(instanceId + ":" + terminal.name, (request: string) => {
-            return terminal.doRpcCommand(request);
-        });
+        // 打开会话
+        await terminal.openSession();
 
         return terminal;
     }
+
 }
 export { 
     VtyTerminal, 

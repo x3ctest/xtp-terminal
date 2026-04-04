@@ -1,15 +1,10 @@
 import * as vscode from "vscode";
 import * as path from 'path';
-import fs from 'fs/promises';
 import { l10n } from 'vscode';
-import crypto from 'crypto';
-import { Global } from "../../common/global";
 import { TreeDataProvider, TreeItem } from "vscode";
 import { ITerminalConfiguration } from "../../terminal/VtyTerminal";
 import { terminalManager } from "../../terminal/terminalManager";
 import { getLogDefaultAddingTimeStamp, getLogDirUri, getLogSizeLimit } from '../../settingManager';
-import { startTerminalMgtDealer, DealerHandle, closeDealer  } from '../../rpcserver/xtpserver';
-import { getTerminalConfigurationObj } from './terminalConfiguratiionView';
 
 // 定义终端配置的数据模型
 interface TerminalConfigProfile {
@@ -57,37 +52,47 @@ function registerTerminalListView(context: vscode.ExtensionContext) {
           
     // 注册刷新命令
     context.subscriptions.push(
-        vscode.commands.registerCommand('xtp.terminal.terminalListTree.add', () => {
-            var treeNode = terminalConfigurationProvider.addNewTerminalNode();
-            var config = terminalConfigurationProvider.getTerminalElement(treeNode);
-
-            treeView.reveal(treeNode, {
-                select: true,
-                focus: true
-            });
-
-            setImmediate(async ()=> {
-                vscode.commands.executeCommand('xtp.terminal.editTerminalConfiguration', config);
-            });
-        }),
-        vscode.commands.registerCommand('xtp.terminal.terminalListTree.refresh', async () => {
-            await terminalConfigurationProvider.loadConfig();
-            const treeNode = terminalConfigurationProvider.getFirstTerminalNodes();
-            if (treeNode) {
-                treeView.reveal(treeNode, {
-                    select: true,
-                    focus: true
+        vscode.commands.registerCommand('xtp.terminal.terminalListTree.connect', async (item: TerminalTreeNode | ITerminalConfiguration) => {
+            if (item instanceof TerminalTreeNode) {
+                // 如果是测试床节点，打开该测试床下的所有终端
+                if (item.type === 'testbed') {
+                    // 查找该测试床的所有终端
+                    const testbedData = terminalConfigurationProvider.testbeds.get(item.testbedPath);
+                    if (testbedData) {
+                        const terminals = testbedData.terminals;
+                        if (terminals.length > 0) {
+                            for (const terminal of terminals) {
+                                await terminalManager.showTerminal(terminal.name, terminal, async () => {
+                                     await terminalManager.remove(terminal.name);
+                                });
+                            }
+                            const msg = l10n.t('command.connection.connect');
+                            vscode.window.showInformationMessage(`${msg}: ${terminals.length} 个终端`);
+                        } else {
+                            vscode.window.showInformationMessage('该测试床下没有终端');
+                        }
+                    }
+                } else {
+                    // 如果是终端节点，打开单个终端
+                    const terminal = terminalConfigurationProvider.getTerminalElement(item);
+                    if (terminal !== null) {
+                        await terminalManager.showTerminal(terminal.name, terminal, async () => {
+                            await terminalManager.remove(terminal.name);
+                        });
+                        const msg = l10n.t('command.connection.connect');
+                        vscode.window.showInformationMessage(`${msg}: ${terminal.name}`);
+                    }
+                }
+            } else {
+                // 如果是终端配置对象，直接使用
+                const terminal = item;
+                if (terminal !== null) {
+                    await terminalManager.showTerminal(terminal.name, terminal, async () => {
+                    await terminalManager.remove(terminal.name);
                 });
-            }
-        }),
-        vscode.commands.registerCommand('xtp.terminal.terminalListTree.connect', (item: TerminalTreeNode) => {
-            const terminal = terminalConfigurationProvider.getTerminalElement(item);
-            if (terminal !== null) {
-                terminalManager.showTerminal(terminal.name, terminal, () => {
-                    terminalManager.remove(terminal.name);
-                });
-                const msg = l10n.t('command.connection.connect');
-                vscode.window.showInformationMessage(`${msg}: ${item.label}`);
+                    const msg = l10n.t('command.connection.connect');
+                    vscode.window.showInformationMessage(`${msg}: ${terminal.name}`);
+                }
             }
         }),
         vscode.commands.registerCommand('xtp.terminal.terminalListTree.startSaveLog', async (item: TerminalTreeNode) => {
@@ -102,7 +107,7 @@ function registerTerminalListView(context: vscode.ExtensionContext) {
                     setTernimalRecordingLog(await terminal.startLogging(logPath, logSize, timestamp));
 
                     const msg = l10n.t('commands.startSaveLog');
-                    vscode.window.showInformationMessage(`${msg} failed: ${item.label}`);
+                    vscode.window.showInformationMessage(`${msg} success: ${item.label}`);
                 }
             }
         }),
@@ -116,128 +121,43 @@ function registerTerminalListView(context: vscode.ExtensionContext) {
                     // vscode.window.showInformationMessage(`停止记录日志: ${item.label}`);
                 }
             }
-        }),
-        vscode.commands.registerCommand('xtp.terminal.terminalListTree.delete', async (item: TerminalTreeNode) => {
-              const result = await vscode.window.showWarningMessage(
-                `确定要删除终端 "${item.label}" 吗？此操作不可恢复。`,
-                '确认',  // 第一个按钮（确认）
-                '取消'   // 第二个按钮（取消）
-              );
-          
-              // 2. 根据用户选择执行逻辑
-              if (result === '确认') {
-                // 用户确认删除：执行实际删除操作（如删除文件/更新树视图）
-                const treeNode = terminalConfigurationProvider.removeTerminalItem(item);
+        })
+    );
+    
+    // 注册从外部更新终端列表的命令
+    context.subscriptions.push(
+        vscode.commands.registerCommand('xtp.terminal.updateTerminalList', (terminals: ITerminalConfiguration[], testbedPath: string = 'default') => {
+            terminalConfigurationProvider.loadTerminals(terminals, testbedPath);
+            const treeNode = terminalConfigurationProvider.getFirstTerminalNodes();
+            if (treeNode) {
                 treeView.reveal(treeNode, {
                     select: true,
                     focus: true
                 });
-
-                const config = terminalConfigurationProvider.getTerminalElement(treeNode);
-                await vscode.commands.executeCommand('xtp.terminal.showTerminalConfiguration', config);
-              } else {
-                // 用户取消或关闭对话框：不执行操作
-                // vscode.window.showInformationMessage('删除操作已取消');
-              }
-        }),
-        vscode.commands.registerCommand('xtp.terminal.terminalListTree.save', (name: string, terminal: ITerminalConfiguration) => {
-            const treeNode = terminalConfigurationProvider.saveTerminalConfiguration(name, terminal);
-            if (!treeNode) {
-                return;
             }
-            treeView.reveal(treeNode, {
-              select: true,
-              focus: true
-            });
+        }),
+        vscode.commands.registerCommand('xtp.terminal.removeTerminalFromTestbed', (terminalName: string, testbedPath: string = 'default') => {
+            terminalConfigurationProvider.removeTerminalFromTestbed(terminalName, testbedPath);
+        }),
+        vscode.commands.registerCommand('xtp.terminal.removeTestbed', (testbedPath: string) => {
+            terminalConfigurationProvider.removeTestbed(testbedPath);
+        }),
+        vscode.commands.registerCommand('xtp.terminal.selectTerminal', (deviceName: string, testbedPath: string = 'default') => {
+            // 查找对应设备名称的终端节点
+            const terminal = terminalConfigurationProvider.getTerminalElementByName(deviceName, testbedPath);
+            if (terminal) {
+                // 查找对应的树节点
+                const treeNode = terminalConfigurationProvider.getTreeNodeByTerminalName(deviceName, testbedPath);
+                if (treeNode) {
+                    // 选择并聚焦到该终端节点
+                    treeView.reveal(treeNode, {
+                        select: true,
+                        focus: true
+                    });
+                }
+            }
         })
     );
-    
-    treeView.onDidChangeSelection(async (event) => {
-        const item = event.selection[0] as TerminalTreeNode;
-        const config = terminalConfigurationProvider.getTerminalElement(item);
-        await vscode.commands.executeCommand('xtp.terminal.showTerminalConfiguration', config);
-    });
-
-    setTimeout(async () => {
-        await terminalConfigurationProvider.loadConfig();
-        const treeNode = terminalConfigurationProvider.getFirstTerminalNodes();
-        if (treeNode) {
-            treeView.reveal(treeNode, {
-                select: true,
-                focus: true
-            });
-            //const config = terminalConfigurationProvider.getTerminalElement(treeNode);
-            //await vscode.commands.executeCommand('xtp.terminal.showTerminalConfiguration', config);
-        }
-    }, 1000);
-   
-    /*context.subscriptions.push(vscode.commands.registerCommand(
-        'xtp.terminal.handleTreeItemDoubleClick',
-        (item) => {
-          // 在这里实现双击后的具体逻辑
-          // vscode.window.showInformationMessage(`双击了: ${item.label}`);
-          // 例如：打开文件、显示详情等操作
-        }
-    ));*/    
-}
-
-async function registerRpcTerminalMgtDealer(context: vscode.ExtensionContext) {
-    const projectPath = getCurrentProjectDir();
-    const identity = crypto.createHash('sha256').update(projectPath).digest('hex');
-    Global.terminalRpcMgtDealerHandle = await startTerminalMgtDealer(identity, projectPath, async (request: string) : Promise<string> => {
-        console.log(request);
-        const jsonrequest = JSON.parse(request);
-        switch (jsonrequest.method) {
-            case "open": {
-                const target = jsonrequest.target;
-                const config = terminalConfigurationProvider.getTerminalElementByName(target);
-                if (config !== null) {
-                    if (!jsonrequest.opts) {
-                        //已存在终端信息且不更新参数，直接打开
-                        terminalManager.showTerminal(config.name, config, () => {
-                            //terminalManager.remove(config.name);
-                        });
-                        return "success";
-                    }
-                    else {
-                        //参数已更新，关闭已打开的终端窗口并删除终端信息
-                        const terminal = terminalManager.getFromTerminalName(target);
-                        if (terminal !== undefined) {
-                            terminal.close();
-                            terminalManager.remove(target);
-                        }
-                        terminalConfigurationProvider.removeTerminalItemByName(target);
-                    }
-                    
-                    //const msg = l10n.t('command.connection.connect');
-                    //vscode.window.showInformationMessage(`${msg}: ${target}`);
-                }
-
-                //添加窗口信息并打开
-                const connectOpts :ITerminalConfiguration = getTerminalConfigurationObj(jsonrequest.opts);
-                terminalConfigurationProvider.addTerminalItem(connectOpts);
-                terminalManager.showTerminal(connectOpts.name, connectOpts, () => {
-                    //terminalManager.remove(connectOpts.name);
-                });
-                                
-                //vscode.window.showInformationMessage("open");
-                return "success";
-            }
-            case "close": {
-                const target = jsonrequest.target;
-                const terminal = terminalManager.getFromTerminalName(target);
-                if (terminal !== undefined) {
-                    terminal.close();
-                    terminalManager.remove(target);
-                }
-                //vscode.window.showInformationMessage("close");
-                return "success";
-            }
-            default: {
-                return "failed";
-            }
-        }
-    });
 }
 
 function setTernimalRecordingLog(value: boolean) {
@@ -248,82 +168,46 @@ function setTernimalRecordingLog(value: boolean) {
     );
 }
 
-async function readTestbed(configPath: string) {
-    try {
-        // 检查文件是否可访问（F_OK 表示仅判断存在性）
-        await fs.access(configPath, fs.constants.F_OK);       
-        const configUri = vscode.Uri.file(configPath);
-
-        // 读取文件内容
-        const fileContent = await vscode.workspace.fs.readFile(configUri);
-        const jsonString = new TextDecoder().decode(fileContent);
-
-        return jsonString;
-    } catch {
-        //返回空配置信息
-        return '{description: "xterm configuration profile", version:"0.0.1", terminals:[]}';
-    }
-    
-}
-
-async function getTestbedTerminals(configPath: string) {
-    const jsonString = await readTestbed(configPath);
-    const config: TerminalConfigProfile = JSON.parse(jsonString);
-
-    return config.terminals;
-}
-
-async function writeTestbed(configPath: string, content:string) {  
-    const configUri = vscode.Uri.file(configPath);
-    const textEncoder = new TextEncoder();
-    const data = textEncoder.encode(content);
-    await vscode.workspace.fs.writeFile(configUri, data);
-}
-
-async function saveTestbedTerminals(configPath: string, terminals: ITerminalConfiguration[]) {
-    const jsonString = await readTestbed(configPath);
-    const config: TerminalConfigProfile = JSON.parse(jsonString);
-
-    let newTestbed: TerminalConfigProfile = config;
-    newTestbed.description = config.description;
-    newTestbed.version = config.version;
-    newTestbed.terminals = terminals;
-
-    const newTestbedContent: string = JSON.stringify(newTestbed);
-
-    await writeTestbed(configPath, newTestbedContent);
-}
-
 // 树视图节点
 class TerminalTreeNode extends vscode.TreeItem {
+    public children: TerminalTreeNode[] = [];
+    public readonly testbedPath: string;
+
     constructor(
         public label: string,
         public readonly type: string,
-        public readonly collapsibleState: vscode.TreeItemCollapsibleState = vscode.TreeItemCollapsibleState.None
+        public readonly collapsibleState: vscode.TreeItemCollapsibleState = vscode.TreeItemCollapsibleState.None,
+        testbedPath: string = ''
     ) {
         super(label, collapsibleState);
         this.tooltip = `${this.label} (${this.type})`;
         this.description = this.type;
         this.contextValue = `xtp.terminal.terminalListTree.treeItem:${label}:stopped`;
+        this.testbedPath = testbedPath;
     }
 }
 
-function createTerminalNode (terminal: ITerminalConfiguration) : TerminalTreeNode {
+function createTerminalNode (terminal: ITerminalConfiguration, testbedPath: string) : TerminalTreeNode {
     var treeNode : TerminalTreeNode;
     if (isSerialTerminalConfig(terminal)) {
-        treeNode = new TerminalTreeNode(terminal.name, terminal.options.path);
+        treeNode = new TerminalTreeNode(terminal.name, terminal.options.path, vscode.TreeItemCollapsibleState.None, testbedPath);
     }
     else if (isSshTerminalConfig(terminal)) {
-        treeNode = new TerminalTreeNode(terminal.name, terminal.options.host);
+        treeNode = new TerminalTreeNode(terminal.name, terminal.options.host, vscode.TreeItemCollapsibleState.None, testbedPath);
     }
     else if (isTelnetTerminalConfig(terminal)) {
-        treeNode = new TerminalTreeNode(terminal.name, terminal.options.host);
+        treeNode = new TerminalTreeNode(terminal.name, terminal.options.host, vscode.TreeItemCollapsibleState.None, testbedPath);
     }
     else {
         const msg = l10n.t('xtp.terminal.listview.unsupported');
         vscode.window.showErrorMessage(msg + `: ${terminal.name}(${terminal.type})`);
     }
     return treeNode;
+};
+
+function createTestbedNode (testbedPath: string) : TerminalTreeNode {
+    const testbedName = path.basename(testbedPath);
+    return new TerminalTreeNode(testbedName, 'testbed', vscode.TreeItemCollapsibleState.Expanded, testbedPath);
 };
     
 
@@ -332,53 +216,76 @@ const terminalConfigurationProvider = new (class implements TreeDataProvider<Tre
     private _onDidChangeTreeData: vscode.EventEmitter<TerminalTreeNode | undefined | null | void> = new vscode.EventEmitter<TerminalTreeNode | undefined | null | void>();
     readonly onDidChangeTreeData: vscode.Event<TerminalTreeNode | undefined | null | void> = this._onDidChangeTreeData.event;
 
-    private terminals: ITerminalConfiguration[] = [];
+    public testbeds: Map<string, { terminals: ITerminalConfiguration[], node: TerminalTreeNode }> = new Map();
     private treeNodes: TerminalTreeNode[] = [];
-    private testbed: string;
 
     constructor() {
         // 初始化时加载配置
-        //this.loadConfig();
     }
 
-    // 加载并解析配置文件
-    async loadConfig() {
+    // 从外部传入终端配置，支持多个测试床文件
+    loadTerminals(terminals: ITerminalConfiguration[], testbedPath: string = 'default') {
         try {
-            const workspaceFolders = vscode.workspace.workspaceFolders;
-            if (!workspaceFolders) {
-                //vscode.window.showErrorMessage('请打开包含终端配置的工作区');
-                return;
+            // 存储终端数据
+            if (!this.testbeds.has(testbedPath)) {
+                const testbedNode = createTestbedNode(testbedPath);
+                this.testbeds.set(testbedPath, { terminals: [], node: testbedNode });
+                this.treeNodes.push(testbedNode);
             }
 
-            // 假设配置文件名为default.tbdx，位于工作区根目录
-            const rootPath = workspaceFolders[0].uri.fsPath;
-            this.testbed = path.join(rootPath, DEFAULT_TESTBED_FILE);
-            
-            // 存储终端数据
-            this.terminals = await getTestbedTerminals(this.testbed);
-            this.treeNodes.length = 0;
-            this.terminals.map(terminal => {
-                const treeNode = createTerminalNode(terminal);
-                this.treeNodes.push(treeNode);
-            });
+            const testbedData = this.testbeds.get(testbedPath);
+            if (testbedData) {
+                testbedData.terminals = terminals;
+                testbedData.node.children = [];
+                
+                terminals.map(terminal => {
+                    const treeNode = createTerminalNode(terminal, testbedPath);
+                    testbedData.node.children.push(treeNode);
+                });
 
-            // 通知树视图数据已更改
-            this._onDidChangeTreeData.fire();
-           
-            // vscode.window.showInformationMessage(`已加载 ${this.terminals.length} 个终端配置`);
+                // 按名称排序测试床节点
+                this.treeNodes.sort((a, b) => a.label.localeCompare(b.label));
+
+                // 通知树视图数据已更改
+                this._onDidChangeTreeData.fire();
+               
+                // vscode.window.showInformationMessage(`已加载 ${terminals.length} 个终端配置`);
+            }
         } catch (error) {
             if (error instanceof Error) {
-                if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-                    const msg = l10n.t('xtp.terminal.listview.notfound');
-                    vscode.window.showErrorMessage(DEFAULT_TESTBED_FILE + " " + msg);
-                } else if (error.name === 'SyntaxError') {
-                    const msg = l10n.t('xtp.terminal.listview.load.failed');
-                    vscode.window.showErrorMessage(msg + `: ${error.message}`);
-                } else {
-                    const msg = l10n.t('xtp.terminal.listview.load.failed');
-                    vscode.window.showErrorMessage(msg + `: ${error.message}`);
-                }
+                const msg = l10n.t('xtp.terminal.listview.load.failed');
+                vscode.window.showErrorMessage(msg + `: ${error.message}`);
             }
+        }
+    }
+
+    // 从测试床中删除终端
+    removeTerminalFromTestbed(terminalName: string, testbedPath: string = 'default') {
+        const testbedData = this.testbeds.get(testbedPath);
+        if (testbedData) {
+            const terminalIndex = testbedData.terminals.findIndex(t => t.name === terminalName);
+            if (terminalIndex !== -1) {
+                testbedData.terminals.splice(terminalIndex, 1);
+                testbedData.node.children.splice(terminalIndex, 1);
+                this._onDidChangeTreeData.fire();
+            }
+        }
+    }
+
+    // 删除整个测试床
+    removeTestbed(testbedPath: string) {
+        const testbedData = this.testbeds.get(testbedPath);
+        if (testbedData) {
+            // 从testbeds Map中删除
+            this.testbeds.delete(testbedPath);
+            
+            // 从treeNodes数组中删除对应的节点
+            const index = this.treeNodes.indexOf(testbedData.node);
+            if (index > -1) {
+                this.treeNodes.splice(index, 1);
+            }
+            
+            this._onDidChangeTreeData.fire();
         }
     }
 
@@ -390,206 +297,74 @@ const terminalConfigurationProvider = new (class implements TreeDataProvider<Tre
     // 获取子节点
     getChildren(element?: TerminalTreeNode): Thenable<TerminalTreeNode[]> {
         if (element) {
-            return Promise.resolve([]); // 无子节点
+            return Promise.resolve(element.children); // 返回测试床的子节点（设备）
         } else {
-            return Promise.resolve(this.treeNodes); // 返回根节点
+            return Promise.resolve(this.treeNodes); // 返回根节点（测试床）
         }
     }
 
     getParent(element: vscode.TreeItem): vscode.ProviderResult<TreeItem> {
-        for (const treeNode of this.treeNodes) {
-            if (element === treeNode.label) {
-                return treeNode;
+        // 查找子节点的父节点（测试床节点）
+        for (const testbedNode of this.treeNodes) {
+            if (testbedNode.children.includes(element as TerminalTreeNode)) {
+                return testbedNode;
             }
         }
-        return element;
+        return undefined;
     }
 
     getFirstTerminalNodes(): TerminalTreeNode | undefined {
         return this.treeNodes.length > 0 ? this.treeNodes[0] : undefined;
     }
-
-    addNewTerminalNode() : TerminalTreeNode  {
-        //查找一个不重复的名称
-        var termPrefix = "DEFAULT_";
-        var index : number = 0;
-
-        while(true) {
-            var termName : string = termPrefix + index.toString();
-            var conflict : boolean = false;
-            for (const terminal of this.terminals) {
-                if (terminal.name === termName) {
-                    conflict = true;
-                    break;
-                }
-            }
-
-            if (!conflict) {
-                break;
-            }
-            index += 1;
-        }
-        
-        const terminal : ITerminalConfiguration = {
-            name: termPrefix + index.toString(),
-            type: "ssh",
-            options: {
-                host: "127.0.0.l",
-                port: 22,
-                username: "",
-                type: "password",
-                password: "",
-                algorithms: {
-                    cipher: [],
-                },
-                privateKeyPath: "",
-                passphrase: "",
-            }
-        };
-        
-        //添加终端节点
-        return this.addTerminalItem(terminal);
-    }
-
-    addTerminalItem(cfg: ITerminalConfiguration) : TerminalTreeNode {
-        for (const terminal of this.terminals) {
-            if (terminal.name === cfg.name) {
-                const msg = l10n.t('xtp.terminal.listview.conflict');
-                vscode.window.showErrorMessage(msg);
-                return null;
-            }
-        }
-
-        const treeNode = createTerminalNode(cfg);
-        if (treeNode) {
-            this.terminals.push(cfg);
-            this.treeNodes.push(treeNode);
-            this._onDidChangeTreeData.fire();
-            saveTestbedTerminals(this.testbed, this.terminals);
-        }
-        return treeNode;
-    }
-
-    /**
-     * 删除一个节点
-     * @param item 要删除的节点
-     * @returns 删除后选中的节点位置
-     */
-    removeTerminalItem(item: TerminalTreeNode) : TerminalTreeNode {
-        let index: number = 0;
-        for (const terminal of this.terminals) {
-            if (terminal.name === item.label) {
-                this.terminals.splice(index, 1);
-                this.treeNodes.splice(index, 1);
-
-                saveTestbedTerminals(this.testbed, this.terminals);
-
-                this._onDidChangeTreeData.fire();
-                index = index > this.treeNodes.length - 1?this.treeNodes.length - 1:index;
-                return this.treeNodes[index];
-            }
-            index += 1;
-        }
-        return item;
-    }
-
-    removeTerminalItemByName(name: string) : TerminalTreeNode {
-        let index: number = 0;
-        for (const terminal of this.terminals) {
-            if (terminal.name === name) {
-                this.terminals.splice(index, 1);
-                this.treeNodes.splice(index, 1);
-
-                saveTestbedTerminals(this.testbed, this.terminals);
-
-                this._onDidChangeTreeData.fire();
-                index = index > this.treeNodes.length - 1?this.treeNodes.length - 1:index;
-                return this.treeNodes[index];
-            }
-            index += 1;
-        }
-        return null;
-    }
-
-    saveTerminalConfiguration(name: string, config: ITerminalConfiguration) {
-        if (name !== config.name) {
-            for (const terminal of this.terminals) {
-                if (terminal.name === config.name) {
-                    const msg = l10n.t('xtp.terminal.listview.conflict');
-                    vscode.window.showWarningMessage(msg + `: ${config.name}`);
-                    return;
-                }
-            }
-        }
-        
-        var index: number = 0;
-        for (const terminal of this.terminals) {
-            if (terminal.name === name) {
-                this.terminals[index] = config;
-                if (isSerialTerminalConfig(config)) {
-                    this.treeNodes[index] = new TerminalTreeNode(config.name, config.options.path);
-                }
-                else if (isSshTerminalConfig(config)) {
-                    this.treeNodes[index] = new TerminalTreeNode(config.name, config.options.host);
-                }
-                else if (isTelnetTerminalConfig(config)) {
-                    this.treeNodes[index] = new TerminalTreeNode(config.name, config.options.host);
-                }
-                else {}
-                saveTestbedTerminals(this.testbed, this.terminals);
-                this._onDidChangeTreeData.fire();
-                return this.treeNodes[index];
-            }
-            index += 1;
-        }
-    }
-
-    changeTerminalName(item: TerminalTreeNode, newName: string) {
-        for (const terminal of this.terminals) {
-            if (terminal.name === newName) {
-                const msg = l10n.t('xtp.terminal.listview.conflict');
-                vscode.window.showWarningMessage(msg + `: ${newName}`);
-                return;
-            }
-        }
-        for (const terminal of this.terminals) {
-            if (terminal.name === item.label) {
-                terminal.name = newName;
-                saveTestbedTerminals(this.testbed, this.terminals);
-
-                this._onDidChangeTreeData.fire();
-            }
-        }
-    }
-
+    
     getTerminalElement(item: TerminalTreeNode) {
         if(item === undefined) {
             return null;
         }
-        for (const terminal of this.terminals) {
-            if (terminal.name === item.label) {
-                return terminal;
+        // 如果是测试床节点，返回null
+        if (item.type === 'testbed') {
+            return null;
+        }
+        // 遍历所有测试床查找终端
+        for (const [testbedPath, testbedData] of this.testbeds) {
+            for (const terminal of testbedData.terminals) {
+                if (terminal.name === item.label) {
+                    return terminal;
+                }
             }
         }
         return null;
     }
 
-    getTerminalElementByName(name: string) {
+    getTerminalElementByName(name: string, testbedPath: string = 'default') {
         if(name === undefined) {
             return null;
         }
-        for (const terminal of this.terminals) {
-            if (terminal.name === name) {
-                return terminal;
+        const testbedData = this.testbeds.get(testbedPath);
+        if (testbedData) {
+            for (const terminal of testbedData.terminals) {
+                if (terminal.name === name) {
+                    return terminal;
+                }
             }
         }
         return null;
     }
 
-    /*getTerminalItemConfig(item: TerminalTreeNode)  {     
-      const terminal = this.getTerminalElement(item);
-      return this.getTerminalConfiguration(terminal);
-    }*/
+    getTreeNodeByTerminalName(name: string, testbedPath: string = 'default') {
+        if(name === undefined) {
+            return null;
+        }
+        const testbedData = this.testbeds.get(testbedPath);
+        if (testbedData) {
+            for (const treeNode of testbedData.node.children) {
+                if (treeNode.label === name) {
+                    return treeNode;
+                }
+            }
+        }
+        return null;
+    }
 
     updateItemStatus(item: TerminalTreeNode, status: string) {
         item.contextValue = `xtp.terminal.terminalListTree.treeItem:${item.label}:${status}`;
@@ -612,5 +387,5 @@ interface CommandQuickPickItem extends vscode.QuickPickItem {
 
 export {
     registerTerminalListView,
-    registerRpcTerminalMgtDealer
+    //registerRpcTerminalMgtDealer
 };

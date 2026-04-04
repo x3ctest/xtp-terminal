@@ -1,7 +1,5 @@
 import { l10n } from 'vscode';
-import { SerialPort } from "serialport";
 import { BaseSession, ISessionCallback } from "../basic/BasicSession";
-
 
 const terminalNamePrefix = "PORT: ";
 
@@ -13,11 +11,28 @@ interface SerialPortConfiguration {
     stopBits: 1 | 1.5 | 2 | undefined,
 }
 
-async function listSerialPort() {
-    return SerialPort.list();
+// 动态导入SerialPort模块
+let SerialPort: any = null;
+
+async function loadSerialPort() {
+    if (!SerialPort) {
+        try {
+            const serialport = await import('serialport');
+            SerialPort = serialport.SerialPort;
+        } catch (error) {
+            console.error('Failed to load serialport module:', error);
+            throw new Error('Serial port module not available');
+        }
+    }
+    return SerialPort;
 }
 
-function serialPortInfo2String(portInfo: import("@serialport/bindings-cpp").PortInfo): string {
+async function listSerialPort() {
+    const serialPort = await loadSerialPort();
+    return serialPort.list();
+}
+
+function serialPortInfo2String(portInfo: any): string {
     let info = new Map<string, string>();
     let portInfoAny = portInfo as any;
 
@@ -30,16 +45,10 @@ function serialPortInfo2String(portInfo: import("@serialport/bindings-cpp").Port
     if (portInfoAny.pnpId) { info.set("PnpId", portInfoAny.pnpId); }
     if (portInfoAny.locationId) { info.set("LocationId", portInfoAny.locationId); }
 
-    let maxWidth = 0;
-    info.forEach((_, key) => {
-        maxWidth = Math.max(key.length, maxWidth);
-    });
-
     let infoString = "";
     info.forEach((value, key) => {
         infoString += `${l10n.t(key)}: ${value}\n`;
     });
-
 
     return infoString;
 }
@@ -47,104 +56,66 @@ function serialPortInfo2String(portInfo: import("@serialport/bindings-cpp").Port
 class SerialSession extends BaseSession {
     public constructor(config: SerialPortConfiguration, callback: ISessionCallback, pseudo: boolean = false) {
         super();
-        /*this.state = {
-            loging: false,
-            timeStamp: getLogDefaultAddingTimeStamp(),
-            hex: false,
-        };*/
         this.serialConfig = config;
         this.callbacks = callback;
-        //let opts = pseudo ? { create: false } : undefined;
-        //this.terminal = new PseudoTerminal(name, opts);
-        //this.init();
     }
 
     private init() {
-        /*this.terminal.setOnInput(
-            (data) => this.serialport.write(data)
-        );
-        this.terminal.setOnOpen(() => {
-            this.terminal.write(this.serialport.isOpen ?
-                colors.green.bold(l10n.t('({0}) CONNECTED', this.serialport.path) + '\r\n\r\n')
-                : colors.red.bold(l10n.t('({0}) OPEN FAILED!', this.serialport.path) + '\r\n\r\n'));
-        });
-        this.terminal.setOnClose(() => {
-            this.serialport.close();
-            if (this.closeCallback) { this.closeCallback(); };
-        });
-        */
-        this.serialPort.addListener("data", (data) =>{
-            //this.terminal.write(data.toString())
+        this.serialPort.addListener("data", (data: Buffer) => {
             this.callbacks.onData(data);
         });
 
         this.serialPort.on("close", () => {
             this.callbacks.onClose();
-            //this.terminal.write(colors.red.bold(
-            //    "\n" + l10n.t("({0}) CLOSED!", this.serialport.path) + '\r\n\r\n'));
-        }
-        );
+        });
     }
 
     async open(): Promise<boolean> {
-        return new Promise<boolean>((resolve, reject) => {
-            let openCallBack = () => {
-                //this.bIsOpen = true;
-                this.init();
-                /*const ret: ActionResult = {
-                    result: true,
-                    msg: ""
-                }*/
-                resolve(true);
-                //resolve(new SerialSession(cfg.name, serialPort));
-            };
+        return new Promise<boolean>(async (resolve, reject) => {
+            try {
+                const serialPort = await loadSerialPort();
+                
+                let openCallBack = () => {
+                    this.init();
+                    resolve(true);
+                };
 
-            /* bug: If dataBits is assigned to undefined, opening the serial port fails, so... */
-            if (this.serialConfig.dataBits) {
-                this.serialPort = new SerialPort({
-                    path: this.serialConfig.path,
-                    baudRate: this.serialConfig.baudrate,
-                    parity: this.serialConfig.parity,
-                    dataBits: this.serialConfig.dataBits,
-                    stopBits: this.serialConfig.stopBits,
-                });
-            } else {
-                this.serialPort = new SerialPort({
-                    path: this.serialConfig.path,
-                    baudRate: this.serialConfig.baudrate,
-                    parity: this.serialConfig.parity,
-                    stopBits: this.serialConfig.stopBits,
-                });
+                /* bug: If dataBits is assigned to undefined, opening the serial port fails, so... */
+                if (this.serialConfig.dataBits) {
+                    this.serialPort = new serialPort({
+                        path: this.serialConfig.path,
+                        baudRate: this.serialConfig.baudrate,
+                        parity: this.serialConfig.parity,
+                        dataBits: this.serialConfig.dataBits,
+                        stopBits: this.serialConfig.stopBits,
+                    });
+                } else {
+                    this.serialPort = new serialPort({
+                        path: this.serialConfig.path,
+                        baudRate: this.serialConfig.baudrate,
+                        parity: this.serialConfig.parity,
+                        stopBits: this.serialConfig.stopBits,
+                    });
+                }
+
+                this.serialPort.open(openCallBack);
+            } catch (error) {
+                console.error('Failed to open serial port:', error);
+                resolve(false);
             }
-
-            this.serialPort.open(openCallBack);
-            //this.init();
         });
     }
 
-    //setCloseCallback(callback?: () => void): void { this.closeCallback = callback; }
-
-    //state: { loging: boolean; timeStamp: boolean; hex: boolean; };
-
-    /*open(): void {
-        if (this.serialport.isOpen) { return; }
-        this.serialport.open(() => {
-            this.terminal.write(this.serialport.isOpen ?
-                colors.green.bold(l10n.t('({0}) CONNECTED', this.serialport.path) + '\r\n\r\n')
-                : colors.red.bold(l10n.t('({0}) OPEN FAILED!', this.serialport.path) + '\r\n\r\n'));
-        });
-    }*/
-
-    send(command:string) {}
+    send(command: string) {}
 
     isOpen(): boolean {
-        return this.serialPort.isOpen;
+        return this.serialPort && this.serialPort.isOpen;
     }
 
     public close() {}
 
     serialConfig: SerialPortConfiguration;
-    serialPort: SerialPort;
+    serialPort: any; // 使用any类型，因为SerialPort类型在动态导入后才可用
     callbacks: ISessionCallback;
 }
 

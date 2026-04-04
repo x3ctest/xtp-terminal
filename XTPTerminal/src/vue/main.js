@@ -8,7 +8,6 @@ import UmyTable from 'umy-table';
 import 'umy-table/lib/theme-chalk/index.css';
 import '../../public/theme/auto.css';
 import '../../public/theme/umyui.css';
-//import "tailwindcss/tailwind.css";
 import "./style/vscode.css";
 import VueI18n from 'vue-i18n';
 import enLocale from './locales/en';
@@ -21,11 +20,11 @@ Vue.use(VueI18n);
 
 Vue.config.productionTip = false;
 
-import session from "./session";
+import NetworkTopologyEditor from './network/index.vue';
 
 const router = new VueRouter({
   routes: [
-    { path: '/session', component: session, name: 'session' }
+    { path: '/networkTopology', component: NetworkTopologyEditor, name: 'networkTopology' }
   ]
 });
 
@@ -41,10 +40,59 @@ const i18n = new VueI18n({
   }
 })
 
-new Vue({
-  el: '#app',
-  i18n,
-  components: { App },
-  router,
-  template: '<App/>'
+// 检查是否在网络拓扑编辑器页面
+console.log('Window flags:', {
+  isNetworkTopologyEditor: window.isNetworkTopologyEditor,
+  isCustomEditor: window.isCustomEditor,
+  location: window.location.href
 });
+
+// 简化判断逻辑，直接检查window.isNetworkTopologyEditor或window.isCustomEditor
+const isNetworkEditor = window.isNetworkTopologyEditor || window.isCustomEditor;
+console.log('Is network editor:', isNetworkEditor);
+
+// 检查 #app 元素是否存在
+const appElement = document.getElementById('app');
+console.log('App element:', appElement);
+
+if (isNetworkEditor && appElement) {
+  console.log('Rendering NetworkTopologyEditor');
+  
+  try {
+    // 使用render函数创建Vue实例
+    new Vue({
+      el: '#app',
+      i18n,
+      render: h => h(NetworkTopologyEditor)
+    });
+    console.log('NetworkTopologyEditor Vue instance created successfully');
+  } catch (error) {
+    console.error('Error creating NetworkTopologyEditor:', error);
+    appElement.innerHTML = '<div style="color: red;">Error loading network topology editor: ' + error.message + '</div>';
+  }
+} else if (appElement) {
+  console.log('Rendering App');
+  try {
+    new Vue({
+      el: '#app',
+      i18n,
+      router,
+      render: h => h(App)
+    });
+    console.log('App Vue instance created successfully');
+  } catch (error) {
+    console.error('Error creating App:', error);
+    appElement.innerHTML = '<div style="color: red;">Error loading app: ' + error.message + '</div>';
+  }
+} else {
+  console.error('App element not found!');
+  // 创建一个错误提示
+  const errorElement = document.createElement('div');
+  errorElement.style.position = 'fixed';
+  errorElement.style.top = '50%';
+  errorElement.style.left = '50%';
+  errorElement.style.transform = 'translate(-50%, -50%)';
+  errorElement.style.color = 'red';
+  errorElement.textContent = 'Error: App element not found!';
+  document.body.appendChild(errorElement);
+}

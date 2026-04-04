@@ -167,19 +167,27 @@ export class TerminalContentBuffer {
    */
   getLatestLines(count: number = 1): string {
     if (count < 1) {
-      throw new Error("获取行数必须大于0");
+      //throw new Error("获取行数必须大于0");
+      return "";
     }
 
-    if (count < this._curPos || this._curPos > this._firstLine) {
-        const startIndex = Math.max(0, this._curPos - count);
-        return this.history.slice(startIndex, this._curPos).join('\n');    
+    //未出现翻转，直接从当前位置向前取指定个数
+    if (this._curPos >= this._firstLine) {
+        const startIndex = Math.max(this._firstLine, this._curPos - count);
+        return this.history.slice(startIndex, this._curPos).join('\n');  
     }
 
+    //出现了翻转时，如果获取的个数小于当前位置，直接返回指定行数的信息
+    if (count <= this._curPos) {
+        return this.history.slice( this._curPos - count, this._curPos).join('\n');    
+    }
+
+    //出现了翻转并且需要进行拼接
     const part1 = this.history.slice(0, this._curPos).join('\n');
     const startIndex = Math.max(this._firstLine, this._maxLines-(count - (this._curPos)));
     const part2 = this.history.slice(startIndex).join('\n');
 
-    return part1 + "\n" + part2;
+    return part2 + "\n" + part1;
   }
 
   _getMarkedLines(index: number): string {

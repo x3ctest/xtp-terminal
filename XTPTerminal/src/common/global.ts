@@ -3,13 +3,12 @@ import * as vscode from "vscode";
 import { join } from "path";
 import * as path from 'path';
 import * as fs from 'fs';
-import { DealerHandle } from "../rpcserver/xtpserver";
 
 export class Global {
 
     public static context: vscode.ExtensionContext;
     private static mysqlStatusBarItem: vscode.StatusBarItem;
-    public static terminalRpcMgtDealerHandle: DealerHandle;
+    public static deviceTypeTree: any[] = [];
 
     public static getExtPath(...paths: string[]) {
         return join(Global.context.extensionPath, ...paths)

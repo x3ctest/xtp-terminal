@@ -27,11 +27,11 @@
   "contributes": {
     "notebooks": [
       {
-        "type": "scrnb",
+        "type": "xts",
         "displayName": "Script Notebook",
         "selector": [
           {
-            "filenamePattern": "*.scrnb"
+            "filenamePattern": "*.xts"
           }
         ]
       }

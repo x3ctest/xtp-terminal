@@ -81,13 +81,14 @@ class TelnetSession extends BaseSession {
                 resolve(true);
             };
                        
-            this.telnetconfig.negotiationMandatory = false;            
+            this.telnetconfig.negotiationMandatory = false;
             this.client.connect(this.telnetconfig)
             .then(() => {
                 openCallBack();
             })
             .catch((err) => {
                 this.callbacks.onError(err);
+                resolve(false);
             });
         });
     }

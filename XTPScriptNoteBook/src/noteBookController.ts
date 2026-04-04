@@ -4,7 +4,7 @@ function registerScriptNotebookController(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         new (class {
             private readonly id = 'script-notebook-controller';
-            private readonly type = 'scrnb';
+            private readonly type = 'xts';
             private readonly label = 'Script Notebook';
             private readonly supportedLanguages = ['shellscript', 'raw', 'plaintext'];
 

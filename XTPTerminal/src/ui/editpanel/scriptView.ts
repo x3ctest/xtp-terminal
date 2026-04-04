@@ -7,7 +7,7 @@ function registerScriptView(context: vscode.ExtensionContext) {
         vscode.window.registerTreeDataProvider(
             "xtp.terminal.scriptsNotebooks",
             new FileTreeDataProvider(
-                ['.scrnb'],
+                ['.xts'],
                 getScriptDirUri,
                 {
                     command: "xtp.terminal.openTreeItemResource",
