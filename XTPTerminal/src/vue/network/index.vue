@@ -216,6 +216,12 @@
                 <label>密码短语</label>
                 <input type="password" class="form-control" v-model="sshConfig.passphrase" @input="updateTerminalConfig">
               </div>
+              <div class="form-group">
+                <label>
+                  <input type="checkbox" v-model="sshConfig.enableSftp" @change="updateTerminalConfig">
+                  启用SFTP连接
+                </label>
+              </div>
             </div>
             
             <!-- Telnet 终端配置 -->
@@ -792,7 +798,8 @@ export default {
           type: terminalOptions.type || 'password',
           password: terminalOptions.password || '',
           privateKeyPath: terminalOptions.privateKeyPath || '',
-          passphrase: terminalOptions.passphrase || ''
+          passphrase: terminalOptions.passphrase || '',
+          enableSftp: terminalOptions.enableSftp !== false // 默认启用
         };
         console.log('selectDevice - sshConfig:', this.sshConfig);
       } else if (terminalType === 'telnet') {
@@ -824,11 +831,7 @@ export default {
         console.log('selectDevice - rpcConfig:', this.rpcConfig);
       }
       
-      // 发送消息给VS Code，通知选择了哪个设备
-      window.vscode.postMessage({
-        command: 'selectDevice',
-        deviceName: device.name
-      });
+
     },
     selectConnection(index) {
       console.log('selectConnection - Connection:', index);
@@ -1043,7 +1046,8 @@ export default {
             type: 'password',
             password: '',
             privateKeyPath: '',
-            passphrase: ''
+            passphrase: '',
+            enableSftp: true // 默认启用
           };
           device.ssh = { ...this.sshConfig };
           device['access-terminal'] = {

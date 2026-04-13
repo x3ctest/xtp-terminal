@@ -2,7 +2,7 @@
   "name": "XTP ScriptNotebook",
   "displayName": "script noteBook",
   "publisher": "x3ctest",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "vscode generic notebook surport with integrated terminal",
   "engines": {
     "vscode": "^1.104.0"
@@ -27,11 +27,11 @@
   "contributes": {
     "notebooks": [
       {
-        "type": "xts",
+        "type": "xtps",
         "displayName": "Script Notebook",
         "selector": [
           {
-            "filenamePattern": "*.xts"
+            "filenamePattern": "*.xtps"
           }
         ]
       }

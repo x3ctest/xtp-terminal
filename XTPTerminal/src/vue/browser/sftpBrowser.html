@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文件浏览器</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+            padding: 0;
+            margin: 0;
+            background-color: var(--vscode-editor-background);
+            color: var(--vscode-editor-foreground);
+            overflow: hidden;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        .path-bar {
+            padding: 8px;
+            background-color: var(--vscode-editorGroupHeader-tabsBackground);
+        }
+        .path-input {
+            width: 100%;
+            padding: 6px;
+            border: 1px solid var(--vscode-input-border);
+            border-radius: 3px;
+            background-color: var(--vscode-input-background);
+            color: var(--vscode-input-foreground);
+            font-size: 13px;
+        }
+        .path-input:focus {
+            outline: none;
+            border-color: var(--vscode-focusBorder);
+        }
+        .toolbar {
+            display: flex;
+            padding: 4px 8px;
+            border-bottom: 1px solid var(--vscode-editorGroup-border);
+            background-color: var(--vscode-editorGroupHeader-tabsBackground);
+        }
+        .toolbar-btn {
+            width: 24px;
+            height: 24px;
+            border: none;
+            border-radius: 3px;
+            background-color: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+            cursor: pointer;
+            margin-right: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .toolbar-btn:hover {
+            background-color: var(--vscode-button-hoverBackground);
+        }
+        .toolbar-btn:active {
+            background-color: var(--vscode-button-activeBackground);
+        }
+        .icon {
+            font-size: 12px;
+        }
+        .file-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 4px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            margin-bottom: 2px;
+        }
+        .file-item:hover {
+            background-color: var(--vscode-list-hoverBackground);
+        }
+        .file-item:active {
+            background-color: var(--vscode-list-activeSelectionBackground);
+        }
+        .file-item.selected {
+            background-color: var(--vscode-list-activeSelectionBackground);
+            color: var(--vscode-list-activeSelectionForeground);
+        }
+        .file-name {
+            flex: 1;
+        }
+        .file-info {
+            font-size: 11px;
+            color: var(--vscode-descriptionForeground);
+            margin-left: 8px;
+        }
+        .no-content {
+            padding: 20px;
+            text-align: center;
+            color: var(--vscode-descriptionForeground);
+        }
+        .directory-icon {
+            width: 16px;
+            height: 16px;
+            display: inline-block;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><path fill="%236082B6" d="M2.5 1C1.67 1 1 1.67 1 2.5V13.5C1 14.33 1.67 15 2.5 15H13.5C14.33 15 15 14.33 15 13.5V4.5L10.5 0H2.5Z"/></svg>');
+        }
+        .file-icon {
+            width: 16px;
+            height: 16px;
+            display: inline-block;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><path fill="%238DA4CE" d="M14 4.5V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h7.5L14 4.5ZM3 3h6v2H3V3Zm0 3h6v2H3V6Zm0 3h6v2H3V9Zm0 3h6v1H3v-1Zm8-8.5L10.5 2H8V4h6v.5Z"/></svg>');
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="path-bar">
+            <input type="text" class="path-input" id="pathInput" placeholder="输入路径..." onkeypress="handlePathKeyPress(event)">
+        </div>
+        <div class="file-list" id="fileList">
+            <div class="no-content">请打开一个SSH终端</div>
+        </div>
+    </div>
+    <script>
+        const vscode = acquireVsCodeApi();
+
+        // 处理路径输入
+        function handlePathKeyPress(event) {
+            if (event.key === 'Enter') {
+                const pathInput = document.getElementById('pathInput');
+                vscode.postMessage({ 
+                    type: 'navigate', 
+                    path: pathInput.value 
+                });
+            }
+        }
+
+        let selectedItem = null;
+
+        // 处理点击选择文件
+        function selectItem(item) {
+            // 移除之前的选中状态
+            const fileItems = document.querySelectorAll('.file-item');
+            fileItems.forEach(item => item.classList.remove('selected'));
+            
+            // 设置新的选中状态
+            selectedItem = item;
+            const selectedElement = event.target.closest('.file-item');
+            if (selectedElement) {
+                selectedElement.classList.add('selected');
+            }
+        }
+
+        // 处理双击
+        function handleDoubleClick(item) {
+            selectItem(item);
+            vscode.postMessage({ 
+                type: 'doubleClick', 
+                item: item 
+            });
+        }
+
+        // 处理下载
+        function handleDownload(path) {
+            vscode.postMessage({ 
+                type: 'download', 
+                path: path 
+            });
+        }
+
+        // 处理刷新
+        function handleRefresh() {
+            vscode.postMessage({ type: 'refresh' });
+        }
+
+        // 跳转到上级目录
+        function navigateToParent() {
+            const pathInput = document.getElementById('pathInput');
+            const currentPath = pathInput.value;
+            if (currentPath === '/') return;
+            
+            const parentPath = currentPath.substring(0, currentPath.lastIndexOf('/')) || '/';
+            vscode.postMessage({ 
+                type: 'navigate', 
+                path: parentPath 
+            });
+        }
+
+        // 下载选中的文件
+        function downloadSelected() {
+            if (selectedItem && selectedItem.type === 'file') {
+                vscode.postMessage({ 
+                    type: 'download', 
+                    path: selectedItem.path 
+                });
+            } else {
+                alert('请选择一个文件进行下载');
+            }
+        }
+
+        // 上传文件
+        function uploadFile() {
+            vscode.postMessage({ type: 'upload' });
+        }
+
+        // 删除选中的文件
+        function deleteSelected() {
+            if (selectedItem) {
+                vscode.postMessage({ 
+                    type: 'delete', 
+                    path: selectedItem.path 
+                });
+            } else {
+                alert('请选择要删除的文件');
+            }
+        }
+
+        // 处理来自webview的消息
+        window.addEventListener('message', event => {
+            const message = event.data;
+            switch (message.type) {
+                case 'refresh':
+                    handleRefresh();
+                    break;
+                case 'update':
+                    updateView(message.path, message.items);
+                    break;
+                case 'navigateParent':
+                    navigateToParent();
+                    break;
+                case 'downloadSelected':
+                    downloadSelected();
+                    break;
+                case 'upload':
+                    uploadFile();
+                    break;
+                case 'deleteSelected':
+                    deleteSelected();
+                    break;
+            }
+        });
+
+        // 更新文件列表
+        function updateView(path, items) {
+            const pathInput = document.getElementById('pathInput');
+            const fileList = document.getElementById('fileList');
+            
+            // 更新路径输入框
+            pathInput.value = path;
+            
+            // 更新文件列表
+            if (!items) {
+                fileList.innerHTML = '<div class="no-content">请打开一个SSH终端</div>';
+                return;
+            }
+            
+            if (items.length === 0) {
+                fileList.innerHTML = '<div class="no-content">目录为空</div>';
+                return;
+            }
+            
+            let html = '';
+            items.forEach(item => {
+                const iconClass = item.type === 'file' ? 'file-icon' : 'directory-icon';
+                const info = item.type === 'file' ? item.size + ' bytes' : '';
+                const itemJson = JSON.stringify(item).replace(/"/g, '&quot;');
+                
+                html += '<div class="file-item" onclick="selectItem(' + itemJson + ');" ondblclick="handleDoubleClick(' + itemJson + ')">' +
+                    '<span class="' + iconClass + '"></span>' +
+                    '<span class="file-name">' + item.name + '</span>' +
+                    '<span class="file-info">' + info + '</span>' +
+                    '</div>';
+            });
+            
+            fileList.innerHTML = html;
+        }
+
+        // 初始化
+        handleRefresh();
+    </script>
+</body>
+</html>

@@ -7,6 +7,7 @@ interface SshSessionConfiguration extends ssh.ConnectConfig {
     //options : ssh.ConnectConfig;
     type: string,
     privateKeyPath: string,
+    enableSftp?: boolean,
 }
 
 class SSHSession extends BaseSession {
@@ -79,15 +80,40 @@ class SSHSession extends BaseSession {
             });
         });
 
-        this.sshclient.on('ready', () => {
+        /*this.sshclient.on('ready', () => {
             //this.terminal.write(`Connected to ${host} as ${username}\r\n`);
-        });
+            
+            // SSH连接建立后，同步建立SFTP连接
+            this.initSftp();
+        });*/
         
         // 处理SSH错误
-        this.sshclient.on('error', (err) =>this.callbacks.onError);
+        //this.sshclient.on('error', (err) =>this.callbacks.onError);
         
         // 处理连接关闭
         this.sshclient.on('close', (hadError) => this.callbacks.onClose);
+
+        this.initSftp();
+    }
+
+    /**
+     * 初始化SFTP连接
+     */
+    private initSftp() {
+        // 检查是否启用SFTP连接
+        const enableSftp = this.sshconfig.enableSftp !== false; // 默认启用
+        
+        if (enableSftp) {
+            this.sshclient.sftp((err, sftp) => {
+                if (err) {
+                    console.error('SFTP connection error:', err);
+                    return;
+                }
+                
+                this.sftpClient = sftp;
+                console.log('SFTP connection established');
+            });
+        }
     }
 
     async open(): Promise<boolean> {
@@ -128,12 +154,24 @@ class SSHSession extends BaseSession {
 
     public close(): void {
         this.sshclient.end();
+        if (this.sftpClient) {
+            this.sftpClient.end();
+        }
+    }
+
+    /**
+     * 获取SFTP客户端实例
+     * @returns SFTP客户端实例
+     */
+    public getSftpClient(): ssh.SFTPWrapper | undefined {
+        return this.sftpClient;
     }
 
     sshconfig: SshSessionConfiguration;
     callbacks: ISessionCallback;
     sshclient: ssh.Client;
     shell: ssh.ClientChannel;
+    sftpClient: ssh.SFTPWrapper;
     bIsOpen: boolean;
 
 }

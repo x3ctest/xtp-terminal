@@ -207,6 +207,20 @@ class VtyTerminal {
         return this.opts.name;
     }
 
+    /**
+     * 获取终端名称
+     */
+    public getName(): string {
+        return this.opts.name;
+    }
+
+    /**
+     * 获取绑定的会话
+     */
+    public getSession(): BaseSession | undefined {
+        return this.bindSession;
+    }
+
     get options(): ExtensionTerminalOptions | undefined {
         if (!this.terminalInstance) { return this.opts; }
     }

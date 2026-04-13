@@ -13,7 +13,7 @@ interface ScriptNoteBookCell {
 function registerScriptNotebookSerializer(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.workspace.registerNotebookSerializer(
-            "xts",
+            "xtps",
             new (class implements vscode.NotebookSerializer {
                 async deserializeNotebook(content: Uint8Array, token: vscode.CancellationToken): Promise<vscode.NotebookData> {
                     var contents = new TextDecoder().decode(content);

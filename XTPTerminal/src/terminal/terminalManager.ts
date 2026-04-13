@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as fs from "fs";
 import { VtyTerminal } from './VtyTerminal';
 import { ZmqRouterServiceImpl } from '../rpcserver/zmqRouterService';
 import { getTerminalViewShowEditArea } from '../settingManager';
@@ -44,6 +45,9 @@ export class TerminalManager {
         let terminal = this.terminals.get(name);
         if (!terminal) {
             if (config && closeCallback) {
+                if (config.type === 'ssh' && config.options.type === 'privateKey' && config.options.privateKeyPath) {
+                    config.options.privateKey = fs.readFileSync(config.options.privateKeyPath, 'utf8');
+                }
                 terminal = await VtyTerminal.create(name, config, false, closeCallback, getTerminalViewShowEditArea());
             } else {
                 terminal = await VtyTerminal.create(name);

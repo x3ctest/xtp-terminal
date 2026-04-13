@@ -62,6 +62,10 @@ function registerTerminalListView(context: vscode.ExtensionContext) {
                         const terminals = testbedData.terminals;
                         if (terminals.length > 0) {
                             for (const terminal of terminals) {
+                                if (((terminal.type ==="ssh" || terminal.type === "telnet") && terminal.options.host === "") ||
+                                    (terminal.type === "serial" && terminal.options.path === "")) {
+                                    continue;
+                                }
                                 await terminalManager.showTerminal(terminal.name, terminal, async () => {
                                      await terminalManager.remove(terminal.name);
                                 });
@@ -76,6 +80,10 @@ function registerTerminalListView(context: vscode.ExtensionContext) {
                     // 如果是终端节点，打开单个终端
                     const terminal = terminalConfigurationProvider.getTerminalElement(item);
                     if (terminal !== null) {
+                        if (((terminal.type ==="ssh" || terminal.type === "telnet") && terminal.options.host === "") ||
+                            (terminal.type === "serial" && terminal.options.path === "")) {
+                            return;
+                        }
                         await terminalManager.showTerminal(terminal.name, terminal, async () => {
                             await terminalManager.remove(terminal.name);
                         });
@@ -87,6 +95,10 @@ function registerTerminalListView(context: vscode.ExtensionContext) {
                 // 如果是终端配置对象，直接使用
                 const terminal = item;
                 if (terminal !== null) {
+                    if (((terminal.type ==="ssh" || terminal.type === "telnet") && terminal.options.host === "") ||
+                        (terminal.type === "serial" && terminal.options.path === "")) {
+                        return;
+                    }
                     await terminalManager.showTerminal(terminal.name, terminal, async () => {
                     await terminalManager.remove(terminal.name);
                 });
@@ -141,7 +153,7 @@ function registerTerminalListView(context: vscode.ExtensionContext) {
         }),
         vscode.commands.registerCommand('xtp.terminal.removeTestbed', (testbedPath: string) => {
             terminalConfigurationProvider.removeTestbed(testbedPath);
-        }),
+        })/*,
         vscode.commands.registerCommand('xtp.terminal.selectTerminal', (deviceName: string, testbedPath: string = 'default') => {
             // 查找对应设备名称的终端节点
             const terminal = terminalConfigurationProvider.getTerminalElementByName(deviceName, testbedPath);
@@ -156,7 +168,7 @@ function registerTerminalListView(context: vscode.ExtensionContext) {
                     });
                 }
             }
-        })
+        })*/
     );
 }
 

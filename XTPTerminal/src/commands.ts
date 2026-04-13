@@ -79,9 +79,6 @@ function registerCommands(context: vscode.ExtensionContext) {
         )
     );*/
 
-    vscode.commands.registerCommand("doSomething", async (context) => {
-    });
-
     // 打开网络拓扑编辑器
     context.subscriptions.push(
         vscode.commands.registerCommand(
@@ -160,7 +157,7 @@ async function createScriptNotebook() {
     if (!fileName) {
         return false;
     }
-    const scriptNotebookFile = vscode.Uri.joinPath(getScriptDirUri(), fileName + ".xts");
+    const scriptNotebookFile = vscode.Uri.joinPath(getScriptDirUri(), fileName + ".xtps");
     fs.writeFileSync(scriptNotebookFile.fsPath, "");
     vscode.commands.executeCommand("vscode.open", scriptNotebookFile);
 }

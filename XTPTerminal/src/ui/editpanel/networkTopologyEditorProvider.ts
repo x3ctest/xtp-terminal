@@ -395,10 +395,10 @@ export class NetworkTopologyEditorProvider implements vscode.CustomEditorProvide
             case 'save':
                 await this.handleSaveConfig(webview, message);
                 break;
-            case 'selectDevice':
-                // 当选择设备时，通过VS Code命令刷新terminalListView的选择
-                await vscode.commands.executeCommand('xtp.terminal.selectTerminal', message.deviceName, documentUri.fsPath);
-                break;
+            //case 'selectDevice':
+            //    // 当选择设备时，通过VS Code命令刷新terminalListView的选择
+            //    await vscode.commands.executeCommand('xtp.terminal.selectTerminal', message.deviceName, documentUri.fsPath);
+            //    break;
             case 'removeDevice':
                 // 当删除设备时，通过VS Code命令从测试床中移除终端
                 if (documentUri) {

@@ -2,7 +2,7 @@
   "name": "xtp-terminal",
   "displayName": "x3ctest terminal platform",
   "publisher": "x3ctest",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "An interactive terminal tool",
   "extensionKind": [
     "ui"
@@ -57,6 +57,12 @@
           "initialSize": 20
         },
         {
+          "name": "%TreeView.sftpFileTree%",
+          "id": "xtp.terminal.sftpFileBrowser",
+          "type": "webview",
+          "initialSize": 30
+        },
+        {
           "name": "%TreeView.logs%",
           "id": "xtp.terminal.logs",
           "initialSize": 50
@@ -97,6 +103,31 @@
           "command": "xtp.terminal.clearTerminal",
           "when": "view == terminal",
           "group": "navigation"
+        },
+        {
+          "command": "xtp.terminal.sftpFileBrowser.refresh",
+          "when": "view == xtp.terminal.sftpFileBrowser",
+          "group": "navigation@1"
+        },
+        {
+          "command": "xtp.terminal.sftpFileBrowser.navigateParent",
+          "when": "view == xtp.terminal.sftpFileBrowser",
+          "group": "navigation@2"
+        },
+        {
+          "command": "xtp.terminal.sftpFileBrowser.download",
+          "when": "view == xtp.terminal.sftpFileBrowser",
+          "group": "navigation@3"
+        },
+        {
+          "command": "xtp.terminal.sftpFileBrowser.upload",
+          "when": "view == xtp.terminal.sftpFileBrowser",
+          "group": "navigation@4"
+        },
+        {
+          "command": "xtp.terminal.sftpFileBrowser.delete",
+          "when": "view == xtp.terminal.sftpFileBrowser",
+          "group": "navigation@5"
         }
       ],
       "view/item/context": [
@@ -119,7 +150,7 @@
           "command": "xtp.terminal.deleteResource",
           "when": "view == xtp.terminal.logs",
           "group": "inline"
-        }
+        }        
       ]
     },
     "commands": [
@@ -203,20 +234,40 @@
         "title": "%commands.stopSaveLog%"
       },
       {
+        "command": "xtp.terminal.sftpFileBrowser.refresh",
+        "icon": "$(refresh)",
+        "title": "%commands.sftp.refresh%"
+      },
+      {
+        "command": "xtp.terminal.sftpFileBrowser.navigateParent",
+        "icon": "$(arrow-up)",
+        "title": "%commands.sftp.navigateParent%"
+      },
+      {
+        "command": "xtp.terminal.sftpFileBrowser.download",
+        "icon": "$(cloud-download)",
+        "title": "%commands.sftp.download%"
+      },
+      {
+        "command": "xtp.terminal.sftpFileBrowser.upload",
+        "icon": "$(cloud-upload)",
+        "title": "%commands.sftp.upload%"
+      },
+      {
+        "command": "xtp.terminal.sftpFileBrowser.delete",
+        "icon": "$(trash)",
+        "title": "%commands.sftp.delete%"
+      },
+      {
         "command": "xtp.terminal.clearTerminal",
         "icon": "$(clear-all)",
         "title": "%commands.clearTerminal%"
       },
       {
-        "command": "doSomething",
-        "icon": "$(play)",
-        "title": "XTP test: do something"
-      },
-      {
         "command": "xtp.terminal.openNetworkTopologyEditor",
         "title": "打开网络拓扑编辑器",
         "icon": "$(symbol-array)"
-      }
+      }      
     ],
     "customEditors": [
       {

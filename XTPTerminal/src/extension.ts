@@ -9,6 +9,7 @@ import { registerTerminalListView } from './ui/slidebar/terminalListView';
 
 //import { registerTerminalConfigurationView } from './ui/slidebar/terminalConfiguratiionView';
 import { registerLogView } from './ui/slidebar/logView';
+import { registerSftpFileBrowserView } from './ui/slidebar/sftpFileBrowserView';
 //import { registerScriptView } from './ui/editpanel/scriptView';
 import { registerReadOnlyDocument } from './readOnlyDcoument';
 import { ServiceManager } from './terminal/serviceManager';
@@ -43,6 +44,8 @@ export async function activate(context: vscode.ExtensionContext) {
 	registerNetworkTopologyView(context);
 	//registerTerminalConfigurationView(context);
 	registerLogView(context);
+	// 注册SFTP文件浏览器视图
+	registerSftpFileBrowserView(context);
 	//registerScriptView(context);
 	registerContextCallback(context);
 	registerReadOnlyDocument(context);

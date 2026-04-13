@@ -42,41 +42,6 @@
             "parent": "Device",
             "manufacturer": "none",
             "icon": "./icons/firewall.png"
-        },
-        {
-            "name": "H3CSwitch",
-            "description": "H3C交换机",
-            "parent": "Switch",
-            "manufacturer": "H3C",
-            "icon": "./icons/h3cswitch.png"
-        },
-        {
-            "name": "H3CRouter",
-            "description": "H3C路由器",
-            "parent": "Router",
-            "manufacturer": "H3C",
-            "icon": "./icons/h3crouter.png"
-        },
-        {
-            "name": "TestCenter",
-            "description": "思博伦测试仪",
-            "parent": "TestInstrument",
-            "manufacturer": "Spirent",
-            "icon": "./icons/testcenter.png"
-        },
-        {
-            "name": "Xinertel",
-            "description": "信而泰测试仪",
-            "parent": "TestInstrument",
-            "manufacturer": "Xinertel",
-            "icon": "./icons/xinertel.png"
-        },
-        {
-            "name": "Xnetin",
-            "description": "网仪科技测试仪",
-            "parent": "TestInstrument",
-            "manufacturer": "XNetin",
-            "icon": "./icons/xnetin.png"
         }
     ]
 }
