@@ -314,9 +314,10 @@
       }
     }
   },
+
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
+    "compile": "tsc -p ./ && copy src\\vue\\browser\\sftpBrowser.html out\\ui\\slidebar\\browser\\sftpBrowser.html",
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",

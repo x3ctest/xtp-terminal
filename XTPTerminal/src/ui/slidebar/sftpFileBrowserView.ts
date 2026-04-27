@@ -61,6 +61,23 @@ class SftpFileBrowserViewProvider implements vscode.WebviewViewProvider {
         }
     }
 
+    // 处理终端关闭的方法
+    public onTerminalClosed(terminalName: string) {
+        // 检查是否是当前活动终端
+        if (this._currentTerminalName === terminalName) {
+            // 刷新并清空SFTP文件浏览器
+            this._currentTerminalName = undefined;
+            this._currentPath = '/';
+            if (this._view) {
+                this._view.webview.postMessage({ 
+                    type: 'update', 
+                    path: '/', 
+                    items: [] 
+                });
+            }
+        }
+    }
+
     public resolveWebviewView(
         webviewView: vscode.WebviewView,
         context: vscode.WebviewViewResolveContext,
@@ -112,16 +129,16 @@ class SftpFileBrowserViewProvider implements vscode.WebviewViewProvider {
             //this._checkActiveTerminal();
             setTimeout(() => {
                 this._checkActiveTerminal();
-            }, 500);
+            }, 1000);
         });
 
         // 监听终端创建事件
-        this._terminalCreateDisposable = vscode.window.onDidOpenTerminal((terminal) => {
+        /*this._terminalCreateDisposable = vscode.window.onDidOpenTerminal((terminal) => {
             // 延迟检查，确保终端已完全初始化
             setTimeout(() => {
                 this._checkActiveTerminal();
             }, 1000);
-        });
+        });*/
         // 初始化时检查活动终端
         // this._checkActiveTerminal();
     }
@@ -167,10 +184,16 @@ class SftpFileBrowserViewProvider implements vscode.WebviewViewProvider {
             // 终端不在管理列表中，清空视图
             if (this._currentTerminalName) {
                 // 保存当前终端的路径
-                this._terminalPaths.set(this._currentTerminalName, this._currentPath);
+                // this._terminalPaths.set(this._currentTerminalName, this._currentPath);
+                const terminalOld = terminalManager.getFromTerminalName(this._currentTerminalName);
+                if (!terminalOld) {
+                    this._currentTerminalName = undefined;
+                    this._refresh();
+                }
+
             }
-            this._currentTerminalName = undefined;
-            this._refresh();
+            //this._currentTerminalName = undefined;
+            //this._refresh();
         }
     }
 
@@ -192,6 +215,11 @@ class SftpFileBrowserViewProvider implements vscode.WebviewViewProvider {
         this._currentTerminalName = terminalName;
         this._currentPath = '/';
         this._refresh();
+    }
+
+    //获取当前终端名称
+    public getCurrentTerminal(): string {
+        return this._currentTerminalName;
     }
 
     // 刷新文件列表
@@ -521,7 +549,7 @@ class SftpFileBrowserViewProvider implements vscode.WebviewViewProvider {
     // 生成webview HTML
     private _getHtmlForWebview(webview: vscode.Webview): string {
         // 从文件读取HTML内容
-        const htmlPath = path.join(this._extensionUri.fsPath, 'src', 'vue', 'browser', 'sftpBrowser.html');
+        const htmlPath = path.join(this._extensionUri.fsPath, 'out', 'ui', 'slidebar', 'browser', 'sftpBrowser.html');
         try {
             return fs.readFileSync(htmlPath, 'utf8');
         } catch (error) {
@@ -590,8 +618,19 @@ function registerSftpFileBrowserView(context: vscode.ExtensionContext) {
             viewProvider.deleteSelected();
         })
     );
+
+    // 注册关闭终端命令
+    context.subscriptions.push(
+        vscode.commands.registerCommand('xtp.terminal.sftpFileBrowser.closeTerminal', (terminalName) => {
+            if (terminalName ===viewProvider.getCurrentTerminal()) {
+                // 刷新命令由webview内部处理
+                viewProvider.refresh();
+            }
+        })
+    );
 }
 
 export {
-    registerSftpFileBrowserView
+    registerSftpFileBrowserView,
+    SftpFileBrowserViewProvider
 };

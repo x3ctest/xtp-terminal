@@ -5,6 +5,7 @@ import { TreeDataProvider, TreeItem } from "vscode";
 import { ITerminalConfiguration } from "../../terminal/VtyTerminal";
 import { terminalManager } from "../../terminal/terminalManager";
 import { getLogDefaultAddingTimeStamp, getLogDirUri, getLogSizeLimit } from '../../settingManager';
+import { SftpFileBrowserViewProvider } from './sftpFileBrowserView';
 
 // 定义终端配置的数据模型
 interface TerminalConfigProfile {
@@ -68,6 +69,11 @@ function registerTerminalListView(context: vscode.ExtensionContext) {
                                 }
                                 await terminalManager.showTerminal(terminal.name, terminal, async () => {
                                      await terminalManager.remove(terminal.name);
+                                     
+                                     // 处理SFTP文件浏览器
+                                     if (terminal.type === 'ssh') {
+                                        vscode.commands.executeCommand('xtp.terminal.sftpFileBrowser.closeTerminal', {terminalName:terminal.name});
+                                     }
                                 });
                             }
                             const msg = l10n.t('command.connection.connect');
@@ -86,6 +92,12 @@ function registerTerminalListView(context: vscode.ExtensionContext) {
                         }
                         await terminalManager.showTerminal(terminal.name, terminal, async () => {
                             await terminalManager.remove(terminal.name);
+                            
+                            // 处理SFTP文件浏览器
+                            if (terminal.type === 'ssh') {
+                                // 尝试获取视图提供器实例
+                                vscode.commands.executeCommand('xtp.terminal.sftpFileBrowser.closeTerminal', {terminalName:terminal.name});
+                            }
                         });
                         const msg = l10n.t('command.connection.connect');
                         vscode.window.showInformationMessage(`${msg}: ${terminal.name}`);
@@ -101,6 +113,12 @@ function registerTerminalListView(context: vscode.ExtensionContext) {
                     }
                     await terminalManager.showTerminal(terminal.name, terminal, async () => {
                     await terminalManager.remove(terminal.name);
+                    
+                    // 处理SFTP文件浏览器
+                    if (terminal.type === 'ssh') {
+                        // 尝试获取视图提供器实例
+                        vscode.commands.executeCommand('xtp.terminal.sftpFileBrowser.closeTerminal', {terminalName:terminal.name});
+                    }
                 });
                     const msg = l10n.t('command.connection.connect');
                     vscode.window.showInformationMessage(`${msg}: ${terminal.name}`);
