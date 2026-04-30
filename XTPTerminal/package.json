@@ -281,6 +281,17 @@
         "priority": "default"
       }
     ],
+    "notebooks": [
+      {
+        "type": "xtps",
+        "displayName": "Script Notebook",
+        "selector": [
+          {
+            "filenamePattern": "*.xtps"
+          }
+        ]
+      }
+    ],
     "configuration": {
       "title": "XTP Terminal",
       "properties": {

@@ -18,6 +18,8 @@ import { ITerminalConfiguration } from './terminal/VtyTerminal';
 import { NetworkTopologyEditorProvider } from './ui/editpanel/networkTopologyEditorProvider';
 import { registerNetworkTopologyView } from './ui/editpanel/networkTopologyView';
 //import { getGlobalTerminalFont } from './settingManager';
+import { registerScriptNotebookSerializer } from './notebook/noteBookSerializer';
+import { registerScriptNotebookController } from './notebook/noteBookController';
 
 export var extensionContext: vscode.ExtensionContext;
 
@@ -49,6 +51,9 @@ export async function activate(context: vscode.ExtensionContext) {
 	//registerScriptView(context);
 	registerContextCallback(context);
 	registerReadOnlyDocument(context);
+	// 注册Script Notebook
+	registerScriptNotebookSerializer(context);
+	registerScriptNotebookController(context);
 	
 	// 初始化并启动ZMQ路由服务（非阻塞方式）
 	const zmqService = ZmqRouterServiceImpl.getInstance();
