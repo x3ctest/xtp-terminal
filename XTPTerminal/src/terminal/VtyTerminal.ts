@@ -428,6 +428,9 @@ class VtyTerminal {
             });
         }
 
+        // 获取Dimension配置（用于在终端打开后应用）
+        const dimension = terminalConfig?.options?.dimension;
+
         // 初始化会话
         const sessionCallbacks: ISessionCallback = {
             onData: terminal.write,
@@ -437,8 +440,22 @@ class VtyTerminal {
         const session = await SessionFactory.createSession(terminalConfig, sessionCallbacks, false);
         terminal.setBindSession(session);
 
+        // 设置终端尺寸变化回调（用于通知SSH服务器调整PTY尺寸）
+        terminal.setOnChangeDimensions((newDimensions) => {
+            if (session && typeof session.resize === 'function' && dimension.autoResize) {
+                session.resize(newDimensions.columns || 80, newDimensions.rows || 24);
+            }
+        });
+
         // 打开会话
         await terminal.openSession();
+
+        // 在终端打开后设置Dimension（非自适应模式）
+        if (dimension && !dimension.autoResize) {
+            const columns = Math.max(80, Math.min(65535, dimension.cols || 80));
+            const rows = Math.max(24, Math.min(65535, dimension.rows || 24));
+            terminal.setDimensions({ rows, columns });
+        }
 
         return terminal;
     }

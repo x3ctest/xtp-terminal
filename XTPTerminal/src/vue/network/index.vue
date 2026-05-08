@@ -177,8 +177,8 @@
                 <option value="ssh">SSH</option>
                 <option value="telnet">Telnet</option>
                 <option value="serial">Serial</option>
-                <option value="dummy">DUMMY</option>
                 <option value="rpc">RPC</option>
+                <option value="dummy">DUMMY</option>
               </select>
             </div>
             
@@ -219,8 +219,31 @@
               <div class="form-group">
                 <label>
                   <input type="checkbox" v-model="sshConfig.enableSftp" @change="updateTerminalConfig">
-                  启用SFTP连接
+                  启用SFTP浏览器
                 </label>
+              </div>
+              <!-- 终端Dimension配置 -->
+              <div class="form-group">
+                <label>
+                  <input type="checkbox" v-model="sshConfig.dimension.autoResize" @change="updateTerminalConfig">
+                  自动适配窗口行列
+                </label>
+              </div>
+              <div v-if="!sshConfig.dimension.autoResize" class="dimension-config">
+                <div class="form-group">
+                  <label>行数</label>
+                  <input type="number" class="form-control" 
+                         v-model.number="sshConfig.dimension.rows" 
+                         @input="updateTerminalConfig"
+                         min="1" max="65535">
+                </div>
+                <div class="form-group">
+                  <label>列数</label>
+                  <input type="number" class="form-control" 
+                         v-model.number="sshConfig.dimension.cols" 
+                         @input="updateTerminalConfig"
+                         min="1" max="65535">
+                </div>
               </div>
             </div>
             
@@ -242,6 +265,29 @@
               <div class="form-group">
                 <label>密码</label>
                 <input type="password" class="form-control" v-model="telnetConfig.password" @input="updateTerminalConfig">
+              </div>
+              <!-- 终端Dimension配置 -->
+              <div class="form-group">
+                <label>
+                  <input type="checkbox" v-model="telnetConfig.dimension.autoResize" @change="updateTerminalConfig">
+                  自动适配窗口行列
+                </label>
+              </div>
+              <div v-if="!telnetConfig.dimension.autoResize" class="dimension-config">
+                <div class="form-group">
+                  <label>行数</label>
+                  <input type="number" class="form-control" 
+                         v-model.number="telnetConfig.dimension.rows" 
+                         @input="updateTerminalConfig"
+                         min="1" max="65535">
+                </div>
+                <div class="form-group">
+                  <label>列数</label>
+                  <input type="number" class="form-control" 
+                         v-model.number="telnetConfig.dimension.cols" 
+                         @input="updateTerminalConfig"
+                         min="1" max="65535">
+                </div>
               </div>
             </div>
             
@@ -287,6 +333,29 @@
                   <option value="1.5">1.5</option>
                   <option value="2">2</option>
                 </select>
+              </div>
+              <!-- 终端Dimension配置 -->
+              <div class="form-group">
+                <label>
+                  <input type="checkbox" v-model="serialConfig.dimension.autoResize" @change="updateTerminalConfig">
+                  自动适配窗口行列
+                </label>
+              </div>
+              <div v-if="!serialConfig.dimension.autoResize" class="dimension-config">
+                <div class="form-group">
+                  <label>行数</label>
+                  <input type="number" class="form-control" 
+                         v-model.number="serialConfig.dimension.rows" 
+                         @input="updateTerminalConfig"
+                         min="1" max="65535">
+                </div>
+                <div class="form-group">
+                  <label>列数</label>
+                  <input type="number" class="form-control" 
+                         v-model.number="serialConfig.dimension.cols" 
+                         @input="updateTerminalConfig"
+                         min="1" max="65535">
+                </div>
               </div>
             </div>
             
@@ -399,20 +468,36 @@ export default {
         type: 'password',
         password: '',
         privateKeyPath: '',
-        passphrase: ''
+        passphrase: '',
+        enableSftp: true,
+        dimension: {
+          autoResize: true,
+          rows: 24,
+          cols: 80
+        }
       },
       telnetConfig: {
         host: '',
         port: 23,
         username: '',
-        password: ''
+        password: '',
+        dimension: {
+          autoResize: true,
+          rows: 24,
+          cols: 80
+        }
       },
       serialConfig: {
         path: '',
         baudrate: 9600,
         dataBits: '8',
         parity: 'None',
-        stopBits: '1'
+        stopBits: '1',
+        dimension: {
+          autoResize: true,
+          rows: 24,
+          cols: 80
+        }
       },
       dummyConfig: {
         ip: ''
@@ -655,15 +740,22 @@ export default {
           ip: ''
         };
       } else {
-        newDevice['access-terminal'] = {
-          type: 'telnet',
-          options: {
-            ip: ''
+        const telnetOptions = {
+          host: '',
+          port: 23,
+          username: '',
+          password: '',
+          dimension: {
+            autoResize: true,
+            rows: 24,
+            cols: 80
           }
         };
-        newDevice.telnet = {
-          ip: ''
+        newDevice['access-terminal'] = {
+          type: 'telnet',
+          options: { ...telnetOptions }
         };
+        newDevice.telnet = { ...telnetOptions };
       }
       
       this.devices.push(newDevice);
@@ -799,7 +891,12 @@ export default {
           password: terminalOptions.password || '',
           privateKeyPath: terminalOptions.privateKeyPath || '',
           passphrase: terminalOptions.passphrase || '',
-          enableSftp: terminalOptions.enableSftp !== false // 默认启用
+          enableSftp: terminalOptions.enableSftp !== false, // 默认启用
+          dimension: {
+            autoResize: terminalOptions.dimension?.autoResize !== false, // 默认启用自适应
+            rows: terminalOptions.dimension?.rows || 24,
+            cols: terminalOptions.dimension?.cols || 80
+          }
         };
         console.log('selectDevice - sshConfig:', this.sshConfig);
       } else if (terminalType === 'telnet') {
@@ -807,7 +904,12 @@ export default {
           host: terminalOptions.host || device.host || '',
           port: terminalOptions.port || 23,
           username: terminalOptions.username || '',
-          password: terminalOptions.password || ''
+          password: terminalOptions.password || '',
+          dimension: {
+            autoResize: terminalOptions.dimension?.autoResize !== false, // 默认启用自适应
+            rows: terminalOptions.dimension?.rows || 24,
+            cols: terminalOptions.dimension?.cols || 80
+          }
         };
         console.log('selectDevice - telnetConfig:', this.telnetConfig);
       } else if (terminalType === 'serial') {
@@ -816,7 +918,12 @@ export default {
           baudrate: terminalOptions.baudrate || 9600,
           dataBits: terminalOptions.dataBits || '8',
           parity: terminalOptions.parity || 'None',
-          stopBits: terminalOptions.stopBits || '1'
+          stopBits: terminalOptions.stopBits || '1',
+          dimension: {
+            autoResize: terminalOptions.dimension?.autoResize !== false, // 默认启用自适应
+            rows: terminalOptions.dimension?.rows || 24,
+            cols: terminalOptions.dimension?.cols || 80
+          }
         };
         console.log('selectDevice - serialConfig:', this.serialConfig);
       } else if (terminalType === 'dummy') {
@@ -1047,7 +1154,12 @@ export default {
             password: '',
             privateKeyPath: '',
             passphrase: '',
-            enableSftp: true // 默认启用
+            enableSftp: true,
+            dimension: {
+              autoResize: true,
+              rows: 24,
+              cols: 80
+            }
           };
           device.ssh = { ...this.sshConfig };
           device['access-terminal'] = {
@@ -1059,7 +1171,12 @@ export default {
             host: device.host || '',
             port: 23,
             username: '',
-            password: ''
+            password: '',
+            dimension: {
+              autoResize: true,
+              rows: 24,
+              cols: 80
+            }
           };
           device.telnet = { ...this.telnetConfig };
           device['access-terminal'] = {
@@ -1075,7 +1192,12 @@ export default {
             baudrate: 9600,
             dataBits: '8',
             parity: 'None',
-            stopBits: '1'
+            stopBits: '1',
+            dimension: {
+              autoResize: true,
+              rows: 24,
+              cols: 80
+            }
           };
           device.serial = { ...this.serialConfig };
           device['access-terminal'] = {
@@ -1101,6 +1223,8 @@ export default {
             options: { ...this.rpcConfig }
           };
         }
+        // 强制Vue重新渲染视图，确保终端类型切换后UI正确更新
+        this.$forceUpdate();
         // 发送消息给VS Code，触发文档变更事件，标记为dirty
         window.vscode.postMessage({ command: 'updateDevice' });
       }
@@ -1672,7 +1796,7 @@ html, body {
 }
 
 .properties-panel {
-  width: 300px;
+  width: 210px;
   padding: 10px;
   background-color: var(--vscode-sidebar-background);
   border-left: 1px solid var(--vscode-sidebar-border);
@@ -1705,6 +1829,22 @@ html, body {
   background-color: var(--vscode-input-background);
   color: var(--vscode-input-foreground);
   font-family: var(--vscode-font-family);
+  box-sizing: border-box;
+}
+
+select.form-control {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--vscode-input-border);
+  border-radius: 4px;
+  font-size: 12px;
+  background-color: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  font-family: var(--vscode-font-family);
+  box-sizing: border-box;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
 }
 
 .form-control:focus {
@@ -2007,47 +2147,5 @@ html, body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.properties-panel {
-  width: 250px;
-  padding: 10px;
-  background-color: var(--vscode-sidebar-background);
-  border-left: 1px solid var(--vscode-sidebar-border);
-  overflow-y: auto;
-  color: var(--vscode-foreground);
-}
-
-.property-form {
-  margin-top: 10px;
-}
-
-.form-group {
-  margin-bottom: 12px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 4px;
-  font-size: 12px;
-  font-weight: bold;
-  color: var(--vscode-foreground);
-}
-
-.form-control {
-  width: 100%;
-  padding: 6px 8px;
-  border: 1px solid var(--vscode-input-border);
-  border-radius: 4px;
-  font-size: 12px;
-  background-color: var(--vscode-input-background);
-  color: var(--vscode-input-foreground);
-  font-family: var(--vscode-font-family);
-}
-
-.form-control:focus {
-  outline: none;
-  border-color: var(--vscode-focusBorder);
-  box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.2);
 }
 </style>

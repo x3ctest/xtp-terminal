@@ -9,6 +9,7 @@ class BaseSession {
     //stopLogging(): boolean;
     //setCloseCallback(callback?: () => void): void;
     send(command: string): void {}
+    resize(cols: number, rows: number): void {}
 }
 
 interface ISessionCallback {

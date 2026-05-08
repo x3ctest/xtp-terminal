@@ -53,9 +53,12 @@ class SSHSession extends BaseSession {
         }
         );*/
 
-        
+        const pty : ssh.PseudoTtyOptions = {
+            rows: 24,
+            cols: 80,
+        };
         // 请求一个交互式shell
-        this.sshclient.shell((err, stream) => {
+        this.sshclient.shell(pty, (err, stream) => {
             if (err) {
                 //vscode.window.showErrorMessage(`SSH shell error: ${err.message}`);
                 this.callbacks.onError(err);
@@ -146,6 +149,18 @@ class SSHSession extends BaseSession {
 
     public send(command: string) {
         this.shell.write(command, 'utf-8');
+    }
+
+    /**
+     * 调整PTY尺寸
+     * @param cols 列数
+     * @param rows 行数
+     */
+    public resize(cols: number, rows: number): void {
+        if (this.shell && typeof this.shell.setWindow === 'function') {
+            // setWindow(width, height, pixWidth, pixHeight)
+            this.shell.setWindow(rows, cols, 0, 0);
+        }
     }
 
     public isOpen(): boolean {

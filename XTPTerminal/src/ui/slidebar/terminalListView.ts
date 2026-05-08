@@ -212,7 +212,9 @@ class TerminalTreeNode extends vscode.TreeItem {
         super(label, collapsibleState);
         this.tooltip = `${this.label} (${this.type})`;
         this.description = this.type;
-        this.contextValue = `xtp.terminal.terminalListTree.treeItem:${label}:stopped`;
+        // 区分测试床节点和终端节点，格式: type:label:status
+        const nodeType = type === 'testbed' ? 'testbed' : 'terminal';
+        this.contextValue = `xtp.terminal.terminalListTree.treeItem:${nodeType}:${label}:stopped`;
         this.testbedPath = testbedPath;
     }
 }
@@ -397,7 +399,9 @@ const terminalConfigurationProvider = new (class implements TreeDataProvider<Tre
     }
 
     updateItemStatus(item: TerminalTreeNode, status: string) {
-        item.contextValue = `xtp.terminal.terminalListTree.treeItem:${item.label}:${status}`;
+        // 格式: type:label:status
+        const nodeType = item.type === 'testbed' ? 'testbed' : 'terminal';
+        item.contextValue = `xtp.terminal.terminalListTree.treeItem:${nodeType}:${item.label}:${status}`;
         this._onDidChangeTreeData.fire(item);
     }
 })();

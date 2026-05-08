@@ -2,7 +2,7 @@
   "name": "xtp-terminal",
   "displayName": "x3ctest terminal platform",
   "publisher": "x3ctest",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "An interactive terminal tool",
   "extensionKind": [
     "ui"
@@ -138,12 +138,12 @@
         },
         {
           "command": "xtp.terminal.terminalListTree.startSaveLog",
-          "when": "view == xtp.terminal.terminalListTree && viewItem =~ /:stopped$/",
+          "when": "view == xtp.terminal.terminalListTree && viewItem =~ /:terminal:.*:stopped$/",
           "group": "inline@2"
         },
         {
           "command": "xtp.terminal.terminalListTree.stopSaveLog",
-          "when": "view == xtp.terminal.terminalListTree && viewItem =~ /:running$/",
+          "when": "view == xtp.terminal.terminalListTree && viewItem =~ /:terminal:.*:running$/",
           "group": "inline@3"
         },
         {

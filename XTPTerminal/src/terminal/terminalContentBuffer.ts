@@ -1,3 +1,5 @@
+import * as vscode from 'vscode';
+
 interface ContentMark {
     line : number,
     char : number
@@ -5,6 +7,19 @@ interface ContentMark {
 
 const INTERNAL_MARK_ID = 0;
 const EXTERNAL_MARK_ID = 1;
+
+// 预编译ANSI转义序列正则表达式，避免在saveLine中重复创建
+const ANSI_ESCAPE_REGEX = /\x1B\[[0-?]*[ -/]*[@-~]/g;
+
+/**
+ * 从VS Code设置中获取终端滚动缓冲区行数
+ * @returns 滚动缓冲区行数，默认1000行
+ */
+function getScrollbackLines(): number {
+    const config = vscode.workspace.getConfiguration('terminal.integrated');
+    const scrollback = config.get<number>('scrollback', 1000);
+    return Math.max(1, scrollback);
+}
 
 function processBackspaces(str: string): string {
   const chars: string[] = []; // 用数组存储有效字符
@@ -37,9 +52,13 @@ export class TerminalContentBuffer {
   //private _userMarkerPos: number;
   //private _userMarkerPosInLine: number;
 
-  constructor(maxLines: number = 1000) {
-    if (maxLines < 1) {
-      throw new Error("最大行数必须大于0");
+  /**
+   * 创建终端内容缓冲区
+   * @param maxLines 最大行数，默认为VS Code设置中的terminal.integrated.scrollback值
+   */
+  constructor(maxLines: number = getScrollbackLines()) {
+    if (maxLines < 1 || maxLines>65535) {
+      throw new Error("最大行数必须大于0且小于65536行");
     }
     this._maxLines = maxLines;
     this.clear();
@@ -57,8 +76,8 @@ export class TerminalContentBuffer {
    * @param newMaxLines 新的最大行数（必须大于0）
    */
   set maxLines(newMaxLines: number) {
-    if (newMaxLines < 1) {
-      throw new Error("最大行数必须大于0");
+    if (newMaxLines < 1 || newMaxLines>65535) {
+      throw new Error("最大行数必须大于0且小于65536行");
     }
     // 仅当新值与旧值不同时才处理，避免无效操作
     if (newMaxLines === this._maxLines) return;
@@ -74,14 +93,8 @@ export class TerminalContentBuffer {
    * @param line 终端输出的单行字符串
    */
   saveLine(line: string, newline: boolean): void {
-    const ansiRegex = /\x1B\[[0-?]*[ -/]*[@-~]/g;
-    //const trimmedLine = line.replace(ansiRegex, '').replace(/\x08/g, '').trimEnd(); // 移除ASNI转义序列和行尾多余空白（可选）
-    //const trimmedLine = line.replace(ansiRegex, ''); // 移除ASNI转义序列和行尾多余空白（可选）
+    // 使用预编译的正则表达式，避免重复创建
     
-    //if (this.history[this._curPos] === undefined) {
-    //    this.history[this._curPos] = "";
-    //}
-    //this.history[this._curPos] += line;
     this._lastline += line;
     
     //如果到达最后一行，回到0
@@ -90,7 +103,7 @@ export class TerminalContentBuffer {
     }
 
     //一行处理结束时替换其中的ASNI转义序列和BS字符
-    this.history[this._curPos] = processBackspaces(this._lastline.replace(ansiRegex, ''));
+    this.history[this._curPos] = processBackspaces(this._lastline.replace(ANSI_ESCAPE_REGEX, ''));
     this._lastline = "";
 
     this._curPos += 1;
