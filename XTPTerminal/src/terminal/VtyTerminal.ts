@@ -41,6 +41,7 @@ class VtyTerminal {
     private onClose?: () => void | Promise<void>;
     private onSetDimensions?: (dimensions: TerminalDimensions) => void;
     private opts: ExtensionTerminalOptions;
+    private currentColumns: number = 80;  // 当前终端列数，默认80列
     private terminalInstance: Terminal | undefined;
     private bindSession : BaseSession;
     state: { loging: boolean; logSize:number; timeStamp: boolean; hex: boolean;};
@@ -63,12 +64,16 @@ class VtyTerminal {
                 onDidClose: this.closeEmitter.event,
                 onDidChangeName: this.changeNameEmitter.event,
                 open: (initialDimensions?: vscode.TerminalDimensions) => {
+                    if (initialDimensions) {
+                        this.currentColumns = initialDimensions.columns || 80;
+                    }
                     if (this.onOpen) { this.onOpen(initialDimensions); }
                 },
                 close: async () => {
                     if (this.onClose) { await this.onClose(); }
                 },
                 handleInput: (data: string) => {
+                    console.log(`handleInput called: ${JSON.stringify(data)}, onInput exists: ${!!this.onInput}`);
                     if (this.onInput) { this.onInput(data); }
                 },
                 setDimensions: (dimensions: TerminalDimensions) => {
@@ -130,7 +135,6 @@ class VtyTerminal {
             else {
                 const msg = l10n.t('xtp.terminal.vtp.connected.failed');
                 vscode.window.showErrorMessage(`${this.name} ` + msg);
-                //this.onClose();    
             }
         } catch (err) {
             const msg = l10n.t('xtp.terminal.vtp.connected.failed');
@@ -153,27 +157,25 @@ class VtyTerminal {
 
     showOnReconnect= () =>{
         this.output("\r\n");
-        this.output("————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————\r\n");
+        const separator = '—'.repeat(this.currentColumns);
+        this.output(separator + "\r\n");
+        this.output("\r\n");
         this.output("\x1b[31mSession stopped\x1b[0m\r\n" + 
             "- Press \x1b[95m<Return>\x1b[0m to exit tab\r\n" +
             "- Press \x1b[95mR\x1b[0m to restart session\r\n");
+        
         this.setOnInput(
             async (data) => {
-                switch (data) {
-                    case '\r': {
+                if (data === '\r' || data === '\n' || data === '\r\n') {
+                    if (this.terminalInstance) {
                         this.terminalInstance.dispose();
-                        if (this.onClose) {
-                            await this.onClose();
-                        }
-                        break;
+                        this.terminalInstance = undefined;
                     }
-                    case 'R': {
-                        this.openSession();
-                        break;
+                    if (this.onClose) {
+                        await this.onClose();
                     }
-                    default : {
-
-                    }
+                } else if (data === 'R' || data === 'r') {
+                    this.openSession();
                 }
             }
         );
@@ -183,7 +185,7 @@ class VtyTerminal {
         this.output("\r\n");
         this.output("\x1b[31m" + err.message + "\x1b[0m");
         this.showOnReconnect();
-    }
+    };
 
     setDimensions(dimensions?: TerminalDimensions) {
         this.overrideDimensionsEmitter.fire(dimensions);
@@ -198,10 +200,6 @@ class VtyTerminal {
             terminal?.show();
         }
     }
-
-    /*close(n: number | void) {
-        this.closeEmitter.fire(n);
-    }*/
 
     get name(): string {
         return this.opts.name;
@@ -442,6 +440,7 @@ class VtyTerminal {
 
         // 设置终端尺寸变化回调（用于通知SSH服务器调整PTY尺寸）
         terminal.setOnChangeDimensions((newDimensions) => {
+            terminal.currentColumns = newDimensions.columns || 80;
             if (session && typeof session.resize === 'function' && dimension.autoResize) {
                 session.resize(newDimensions.columns || 80, newDimensions.rows || 24);
             }

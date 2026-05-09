@@ -151,6 +151,27 @@ function registerTerminalListView(context: vscode.ExtensionContext) {
                     // vscode.window.showInformationMessage(`停止记录日志: ${item.label}`);
                 }
             }
+        }),
+        vscode.commands.registerCommand('xtp.terminal.terminalListTree.closeAllTerminals', async (item: TerminalTreeNode) => {
+            if (item.type === 'testbed') {
+                const testbedData = terminalConfigurationProvider.testbeds.get(item.testbedPath);
+                if (testbedData) {
+                    for (const terminal of testbedData.terminals) {
+                        const termInstance = terminalManager.getFromTerminalName(terminal.name);
+                        if (termInstance) {
+                            termInstance.close();
+                            await terminalManager.remove(terminal.name);
+                            
+                            // 处理SFTP文件浏览器
+                            if (terminal.type === 'ssh') {
+                                vscode.commands.executeCommand('xtp.terminal.sftpFileBrowser.closeTerminal', { terminalName: terminal.name });
+                            }
+                        }
+                    }
+                    const msg = l10n.t('command.connection.closeAll');
+                    vscode.window.showInformationMessage(`${msg}: ${testbedData.terminals.length} 个终端`);
+                }
+            }
         })
     );
     
@@ -171,22 +192,7 @@ function registerTerminalListView(context: vscode.ExtensionContext) {
         }),
         vscode.commands.registerCommand('xtp.terminal.removeTestbed', (testbedPath: string) => {
             terminalConfigurationProvider.removeTestbed(testbedPath);
-        })/*,
-        vscode.commands.registerCommand('xtp.terminal.selectTerminal', (deviceName: string, testbedPath: string = 'default') => {
-            // 查找对应设备名称的终端节点
-            const terminal = terminalConfigurationProvider.getTerminalElementByName(deviceName, testbedPath);
-            if (terminal) {
-                // 查找对应的树节点
-                const treeNode = terminalConfigurationProvider.getTreeNodeByTerminalName(deviceName, testbedPath);
-                if (treeNode) {
-                    // 选择并聚焦到该终端节点
-                    treeView.reveal(treeNode, {
-                        select: true,
-                        focus: true
-                    });
-                }
-            }
-        })*/
+        })
     );
 }
 

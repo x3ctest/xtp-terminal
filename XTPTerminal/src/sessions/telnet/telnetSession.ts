@@ -10,12 +10,6 @@ interface TelnetSessionConfig extends ConnectOptions {
 class TelnetSession extends BaseSession {
     public constructor(telnetConfig: TelnetSessionConfig, callback: ISessionCallback, pseudo: boolean = false) {
         super();
-        /*this.state = {
-            loging: false,
-            timeStamp: getLogDefaultAddingTimeStamp(),
-            hex: false,
-        };*/
-        //this.client = telnetClient;
 
         this.bIsOpen = false;
         this.telnetconfig = telnetConfig;
@@ -23,33 +17,10 @@ class TelnetSession extends BaseSession {
     }
 
     private init() {
-        /*this.terminal.setOnInput(
-            (data) => this.client.write(data)
-        );
-        this.terminal.setOnOpen(() => {
-            this.terminal.write(this.client.writable ?
-                colors.green.bold(l10n.t('({0}) CONNECTED', this.telnetconfig.options.host) + '\r\n\r\n')
-                : colors.red.bold(l10n.t('({0}) OPEN FAILED!', this.telnetconfig.options.host) + '\r\n\r\n'));
-        });
-        this.terminal.setOnClose(() => {
-            this.client.destroy();
-            if (this.closeCallback) { this.closeCallback(); };
-        });
-        */
-        //this.client.addListener("data", (data) => {
-        //    c
-        //});
-
         this.client.on('data', (data: Buffer) => {
             let output = this.client.parseData(data);
             this.callbacks.onData(output);
         });
-
-        /*this.client.on("close", () => {
-            this.terminal.write(colors.red.bold(
-                "\n" + l10n.t("({0}) CLOSED!", this.telnetconfig.options.host) + '\r\n\r\n'));
-        }
-        );*/
 
         // 监听错误事件
         this.client.on("error", (err) => {

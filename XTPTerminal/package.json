@@ -147,6 +147,11 @@
           "group": "inline@3"
         },
         {
+          "command": "xtp.terminal.terminalListTree.closeAllTerminals",
+          "when": "view == xtp.terminal.terminalListTree && viewItem =~ /:testbed:/",
+          "group": "inline@2"
+        },
+        {
           "command": "xtp.terminal.deleteResource",
           "when": "view == xtp.terminal.logs",
           "group": "inline"
@@ -178,6 +183,11 @@
         "command": "xtp.terminal.terminalListTree.stopSaveLog",
         "icon": "$(stop-circle)",
         "title": "%commands.stopSaveLog%"
+      },
+      {
+        "command": "xtp.terminal.terminalListTree.closeAllTerminals",
+        "icon": "$(close)",
+        "title": "%command.connection.closeAll%"
       },
       {
         "command": "xtp.terminal.openLogConfigaration",

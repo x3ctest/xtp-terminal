@@ -8,6 +8,7 @@
     "command.connection.refresh": "Refresh",
     "command.connection.global.configuration": "Configuration",
     "command.connection.connect": "Connect",
+    "command.connection.closeAll": "Close All Terminals",
     "command.connection.edit": "Edit",
     "command.connection.delete": "Delete",
     "commands.startSaveLog": "Save the log of the current terminal",

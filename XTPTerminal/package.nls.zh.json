@@ -8,6 +8,7 @@
     "command.connection.refresh": "刷新",
     "command.connection.global.configuration": "配置",
     "command.connection.connect": "打开",
+    "command.connection.closeAll": "关闭所有终端",
     "command.connection.edit": "修改",
     "command.connection.delete": "删除",
     "commands.startSaveLog": "保存当前终端的日志",
