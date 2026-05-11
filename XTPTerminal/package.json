@@ -115,12 +115,12 @@
           "group": "navigation@2"
         },
         {
-          "command": "xtp.terminal.sftpFileBrowser.download",
+          "command": "xtp.terminal.sftpFileBrowser.upload",
           "when": "view == xtp.terminal.sftpFileBrowser",
           "group": "navigation@3"
         },
         {
-          "command": "xtp.terminal.sftpFileBrowser.upload",
+          "command": "xtp.terminal.sftpFileBrowser.download",
           "when": "view == xtp.terminal.sftpFileBrowser",
           "group": "navigation@4"
         },
