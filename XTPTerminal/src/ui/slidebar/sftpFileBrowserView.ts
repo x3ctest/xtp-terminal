@@ -344,16 +344,57 @@ class SftpFileBrowserViewProvider implements vscode.WebviewViewProvider {
             return;
         }
 
-        // 下载文件
-        return new Promise((resolve, reject) => {
-            sftpClient.fastGet(filePath, saveUri.fsPath, (err) => {
-                if (err) {
-                    vscode.window.showErrorMessage(`下载失败: ${err.message}`);
-                    reject(err);
-                } else {
-                    vscode.window.showInformationMessage(`文件已下载: ${saveUri.fsPath}`);
-                    resolve();
-                }
+        // 获取文件大小用于进度计算（字节）
+        let fileSize = 0;
+        try {
+            const stats = await new Promise<any>((resolve, reject) => {
+                sftpClient.stat(filePath, (err, attrs) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(attrs);
+                    }
+                });
+            });
+            fileSize = stats.size; // 字节
+        } catch (err) {
+            // 如果获取文件大小失败，继续下载（进度条可能不准确）
+        }
+
+        // 显示进度条下载文件
+        await vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: `下载文件: ${path.basename(filePath)}`,
+            cancellable: true
+        }, async (progress, token) => {
+            return new Promise((resolve, reject) => {
+                token.onCancellationRequested(() => {
+                    // 用户取消操作
+                    reject(new Error('下载已取消'));
+                });
+
+                sftpClient.fastGet(filePath, saveUri.fsPath, {
+                    step: (transferred: number, total: number) => {
+                        // 使用实际获取的文件大小作为总大小（确保单位一致）
+                        const actualTotal = fileSize > 0 ? fileSize : total;
+                        const percentage = actualTotal > 0 ? Math.round((transferred / actualTotal) * 100) : 0;
+                        // 将字节转换为可读格式
+                        const transferredStr = this._formatFileSize(transferred);
+                        const totalStr = this._formatFileSize(actualTotal);
+                        progress.report({
+                            message: `${transferredStr} / ${totalStr} (${percentage}%)`,
+                            increment: actualTotal > 0 ? (transferred / actualTotal) * 100 : 0
+                        });
+                    }
+                }, (err) => {
+                    if (err) {
+                        vscode.window.showErrorMessage(`下载失败: ${err.message}`);
+                        reject(err);
+                    } else {
+                        vscode.window.showInformationMessage(`文件已下载: ${saveUri.fsPath}`);
+                        resolve(undefined);
+                    }
+                });
             });
         });
     }
@@ -400,16 +441,44 @@ class SftpFileBrowserViewProvider implements vscode.WebviewViewProvider {
             const fileName = path.basename(fileUri.fsPath);
             const remotePath = path.posix.join(this._currentPath, fileName);
 
-            // 上传文件
-            await new Promise((resolve, reject) => {
-                sftpClient.fastPut(fileUri.fsPath, remotePath, (err) => {
-                    if (err) {
-                        vscode.window.showErrorMessage(`上传失败 ${fileName}: ${err.message}`);
-                        reject(err);
-                    } else {
-                        vscode.window.showInformationMessage(`文件已上传: ${remotePath}`);
-                        resolve(undefined);
-                    }
+            // 获取本地文件大小（字节）
+            const fileStats = fs.statSync(fileUri.fsPath);
+            const fileSize = fileStats.size; // 字节
+
+            // 显示进度条上传文件
+            await vscode.window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: `上传文件: ${fileName}`,
+                cancellable: true
+            }, async (progress, token) => {
+                return new Promise((resolve, reject) => {
+                    token.onCancellationRequested(() => {
+                        // 用户取消操作
+                        reject(new Error('上传已取消'));
+                    });
+
+                    sftpClient.fastPut(fileUri.fsPath, remotePath, {
+                        step: (transferred: number, total: number) => {
+                            // 使用实际获取的文件大小作为总大小（确保单位一致）
+                            const actualTotal = fileSize > 0 ? fileSize : total;
+                            const percentage = actualTotal > 0 ? Math.round((transferred / actualTotal) * 100) : 0;
+                            // 将字节转换为可读格式
+                            const transferredStr = this._formatFileSize(transferred);
+                            const totalStr = this._formatFileSize(actualTotal);
+                            progress.report({
+                                message: `${transferredStr} / ${totalStr} (${percentage}%)`,
+                                increment: actualTotal > 0 ? (transferred / actualTotal) * 100 : 0
+                            });
+                        }
+                    }, (err) => {
+                        if (err) {
+                            vscode.window.showErrorMessage(`上传失败 ${fileName}: ${err.message}`);
+                            reject(err);
+                        } else {
+                            vscode.window.showInformationMessage(`文件已上传: ${remotePath}`);
+                            resolve(undefined);
+                        }
+                    });
                 });
             });
         }
@@ -544,6 +613,17 @@ class SftpFileBrowserViewProvider implements vscode.WebviewViewProvider {
                 resolve(items);
             });
         });
+    }
+
+    // 格式化文件大小（字节转换为可读格式）
+    private _formatFileSize(bytes: number): string {
+        if (bytes === 0) return '0 B';
+        
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
 
     // 生成webview HTML

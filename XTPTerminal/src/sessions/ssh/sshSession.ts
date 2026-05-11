@@ -37,17 +37,25 @@ class SSHSession extends BaseSession {
             });
             
             // 处理错误
-            stream.on('error', (err) => this.callbacks.onError);
+            stream.on('error', (err) => {
+                this.bIsOpen = false;
+                this.callbacks.onError(err);
+            });
             
             // 处理流结束
             stream.on('end', () => {
                 //this.terminal.write('\r\nConnection closed\r\n');
+                this.bIsOpen = false;
+                this.callbacks.onClose();
                 this.sshclient.end();
             });
         });
        
         // 处理连接关闭
-        this.sshclient.on('close', (hadError) => this.callbacks.onClose);
+        this.sshclient.on('close', (hadError) => {
+            this.bIsOpen = false;
+            this.callbacks.onClose();
+        });
 
         this.initSftp();
     }

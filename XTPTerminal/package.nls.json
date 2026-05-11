@@ -9,6 +9,7 @@
     "command.connection.global.configuration": "Configuration",
     "command.connection.connect": "Connect",
     "command.connection.closeAll": "Close All Terminals",
+    "command.connection.duplicate": "Duplicate and Open Terminal",
     "command.connection.edit": "Edit",
     "command.connection.delete": "Delete",
     "commands.startSaveLog": "Save the log of the current terminal",

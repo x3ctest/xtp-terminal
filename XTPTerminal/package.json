@@ -2,7 +2,7 @@
   "name": "xtp-terminal",
   "displayName": "x3ctest terminal platform",
   "publisher": "x3ctest",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "An interactive terminal tool",
   "extensionKind": [
     "ui"
@@ -138,12 +138,17 @@
         },
         {
           "command": "xtp.terminal.terminalListTree.startSaveLog",
-          "when": "view == xtp.terminal.terminalListTree && viewItem =~ /:terminal:.*:stopped$/",
+          "when": "view == xtp.terminal.terminalListTree && viewItem =~ /:terminal:.*:stopped:.*$/",
           "group": "inline@2"
         },
         {
           "command": "xtp.terminal.terminalListTree.stopSaveLog",
-          "when": "view == xtp.terminal.terminalListTree && viewItem =~ /:terminal:.*:running$/",
+          "when": "view == xtp.terminal.terminalListTree && viewItem =~ /:terminal:.*:running:.*$/",
+          "group": "inline@2"
+        },
+        {
+          "command": "xtp.terminal.terminalListTree.duplicateTerminal",
+          "when": "view == xtp.terminal.terminalListTree && viewItem =~ /:terminal:.*:original$/",
           "group": "inline@3"
         },
         {
@@ -188,6 +193,11 @@
         "command": "xtp.terminal.terminalListTree.closeAllTerminals",
         "icon": "$(close)",
         "title": "%command.connection.closeAll%"
+      },
+      {
+        "command": "xtp.terminal.terminalListTree.duplicateTerminal",
+        "icon": "$(add)",
+        "title": "%command.connection.duplicate%"
       },
       {
         "command": "xtp.terminal.openLogConfigaration",

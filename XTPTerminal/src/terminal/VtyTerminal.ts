@@ -121,7 +121,7 @@ class VtyTerminal {
         this.onSetDimensions = callback;
     }
 
-    async openSession() {
+    async openSession(): Promise<void> {
         if (!this.bindSession) {
             return;
         }
@@ -133,10 +133,13 @@ class VtyTerminal {
                 );
             }
             else {
+                // 连接失败，显示重连信息
                 const msg = l10n.t('xtp.terminal.vtp.connected.failed');
                 vscode.window.showErrorMessage(`${this.name} ` + msg);
+                //this.showOnReconnect();
             }
         } catch (err) {
+            // 连接异常，显示重连信息
             const msg = l10n.t('xtp.terminal.vtp.connected.failed');
             vscode.window.showErrorMessage(`${this.name} ` + msg);
             this.showOnError(err);
@@ -157,7 +160,7 @@ class VtyTerminal {
 
     showOnReconnect= () =>{
         this.output("\r\n");
-        const separator = '—'.repeat(this.currentColumns);
+        const separator = '─'.repeat(this.currentColumns);
         this.output(separator + "\r\n");
         this.output("\r\n");
         this.output("\x1b[31mSession stopped\x1b[0m\r\n" + 
@@ -446,8 +449,8 @@ class VtyTerminal {
             }
         });
 
-        // 打开会话
-        await terminal.openSession();
+        // 异步打开会话（不等待连接完成，以便终端能立即注册到管理器）
+        terminal.openSession();
 
         // 在终端打开后设置Dimension（非自适应模式）
         if (dimension && !dimension.autoResize) {

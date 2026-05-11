@@ -156,21 +156,135 @@ function registerTerminalListView(context: vscode.ExtensionContext) {
             if (item.type === 'testbed') {
                 const testbedData = terminalConfigurationProvider.testbeds.get(item.testbedPath);
                 if (testbedData) {
-                    for (const terminal of testbedData.terminals) {
-                        const termInstance = terminalManager.getFromTerminalName(terminal.name);
-                        if (termInstance) {
-                            termInstance.close();
-                            await terminalManager.remove(terminal.name);
-                            
-                            // 处理SFTP文件浏览器
-                            if (terminal.type === 'ssh') {
-                                vscode.commands.executeCommand('xtp.terminal.sftpFileBrowser.closeTerminal', { terminalName: terminal.name });
+                    let closedCount = 0;
+                    // 使用 Set 避免重复关闭（原始终端和复制终端可能共享配置）
+                    const closedTerminals = new Set<string>();
+                    
+                    // 遍历所有终端（包括复制的终端）
+                    const closeTerminalRecursively = async (node: TerminalTreeNode) => {
+                        // 关闭当前节点对应的终端
+                        if (node.type !== 'testbed' && !closedTerminals.has(node.label)) {
+                            const termInstance = terminalManager.getFromTerminalName(node.label);
+                            if (termInstance) {
+                                termInstance.close();
+                                await terminalManager.remove(node.label);
+                                
+                                // 处理SFTP文件浏览器
+                                const terminalConfig = terminalConfigurationProvider.getTerminalElement(node);
+                                if (terminalConfig && terminalConfig.type === 'ssh') {
+                                    vscode.commands.executeCommand('xtp.terminal.sftpFileBrowser.closeTerminal', { terminalName: node.label });
+                                }
+                                
+                                closedTerminals.add(node.label);
+                                closedCount++;
                             }
                         }
-                    }
+                        
+                        // 递归关闭子节点（复制的终端）
+                        // 使用 [...node.children] 创建副本，避免遍历过程中数组被修改导致遗漏
+                        for (const child of [...node.children]) {
+                            await closeTerminalRecursively(child);
+                        }
+                    };
+                    
+                    // 关闭测试床节点下的所有终端
+                    await closeTerminalRecursively(testbedData.node);
+                    
                     const msg = l10n.t('command.connection.closeAll');
-                    vscode.window.showInformationMessage(`${msg}: ${testbedData.terminals.length} 个终端`);
+                    vscode.window.showInformationMessage(`${msg}: ${closedCount} 个终端`);
                 }
+            }
+        }),
+        vscode.commands.registerCommand('xtp.terminal.terminalListTree.duplicateTerminal', async (args: any) => {
+            // 参数可以是 TerminalTreeNode 或直接调用
+            if (!(args instanceof TerminalTreeNode)) {
+                return;
+            }
+            
+            const sourceNode = args;
+            
+            // 获取终端配置
+            const terminalConfig = terminalConfigurationProvider.getTerminalElement(sourceNode);
+            if (!terminalConfig) {
+                vscode.window.showErrorMessage('无法找到终端配置');
+                return;
+            }
+            
+            // 检查终端类型，只支持 ssh 和 telnet
+            if (terminalConfig.type === 'serial') {
+                vscode.window.showErrorMessage('Serial 类型终端不支持复制');
+                return;
+            }
+            
+            if (terminalConfig.type !== 'ssh' && terminalConfig.type !== 'telnet') {
+                vscode.window.showErrorMessage('仅支持 SSH 和 Telnet 类型终端复制');
+                return;
+            }
+            
+            // 检查是否已经是复制的终端（二级子节点不允许再复制）
+            if (sourceNode.isDuplicate) {
+                vscode.window.showErrorMessage('复制的终端不支持再次复制');
+                return;
+            }
+            
+            // 生成新终端名称（添加数字序号）
+            let newName = terminalConfig.name;
+            let counter = 1;
+            // 检查测试床中是否已存在同名终端
+            const testbedData = terminalConfigurationProvider.testbeds.get(sourceNode.testbedPath);
+            if (testbedData) {
+                while (testbedData.terminals.some(t => t.name === newName)) {
+                    newName = `${terminalConfig.name} (${counter})`;
+                    counter++;
+                }
+            }
+            
+            // 创建复制的终端配置
+            const newTerminalConfig: ITerminalConfiguration = {
+                ...terminalConfig,
+                name: newName
+            };
+            
+            // 将新终端添加到测试床
+            if (testbedData) {
+                testbedData.terminals.push(newTerminalConfig);
+                
+                // 创建子节点并添加到源节点下
+                const duplicateNode = createTerminalNode(newTerminalConfig, sourceNode.testbedPath, true, sourceNode);
+                sourceNode.children.push(duplicateNode);
+                
+                // 不管原始终端是否打开，都打开复制的终端
+                await terminalManager.showTerminal(newName, { ...newTerminalConfig }, async () => {
+                    await terminalManager.remove(newName);
+                    
+                    // 当复制的终端窗口关闭时，自动删除列表中的子节点
+                    // 从父节点的children中移除
+                    const parentNode = duplicateNode.parentTerminal;
+                    if (parentNode) {
+                        const index = parentNode.children.indexOf(duplicateNode);
+                        if (index !== -1) {
+                            parentNode.children.splice(index, 1);
+                        }
+                    }
+                    
+                    // 从测试床的terminals数组中移除
+                    const termIndex = testbedData.terminals.findIndex(t => t.name === newName);
+                    if (termIndex !== -1) {
+                        testbedData.terminals.splice(termIndex, 1);
+                    }
+                    
+                    // 通知树视图数据已更改
+                    terminalConfigurationProvider.refresh(sourceNode);
+                });
+                
+                // 更新状态为 running
+                terminalConfigurationProvider.updateItemStatus(duplicateNode, "running");
+                
+                // 通知树视图数据已更改
+                terminalConfigurationProvider.refresh(sourceNode);
+                
+                const msg = l10n.t('command.connection.duplicate');
+                vscode.window.showInformationMessage(`${msg}: ${newName}`);
             }
         })
     );
@@ -208,33 +322,39 @@ function setTernimalRecordingLog(value: boolean) {
 class TerminalTreeNode extends vscode.TreeItem {
     public children: TerminalTreeNode[] = [];
     public readonly testbedPath: string;
+    public isDuplicate: boolean = false;  // 是否为复制的终端
+    public parentTerminal: TerminalTreeNode | null = null;  // 父终端节点（仅复制终端有）
 
     constructor(
         public label: string,
         public readonly type: string,
         public readonly collapsibleState: vscode.TreeItemCollapsibleState = vscode.TreeItemCollapsibleState.None,
-        testbedPath: string = ''
+        testbedPath: string = '',
+        isDuplicate: boolean = false,
+        parentTerminal: TerminalTreeNode | null = null
     ) {
         super(label, collapsibleState);
         this.tooltip = `${this.label} (${this.type})`;
         this.description = this.type;
-        // 区分测试床节点和终端节点，格式: type:label:status
+        // 区分测试床节点和终端节点，格式: type:label:status:isDuplicate
         const nodeType = type === 'testbed' ? 'testbed' : 'terminal';
-        this.contextValue = `xtp.terminal.terminalListTree.treeItem:${nodeType}:${label}:stopped`;
+        this.contextValue = `xtp.terminal.terminalListTree.treeItem:${nodeType}:${label}:stopped:${isDuplicate ? 'duplicate' : 'original'}`;
         this.testbedPath = testbedPath;
+        this.isDuplicate = isDuplicate;
+        this.parentTerminal = parentTerminal;
     }
 }
 
-function createTerminalNode (terminal: ITerminalConfiguration, testbedPath: string) : TerminalTreeNode {
+function createTerminalNode (terminal: ITerminalConfiguration, testbedPath: string, isDuplicate: boolean = false, parentTerminal: TerminalTreeNode | null = null) : TerminalTreeNode {
     var treeNode : TerminalTreeNode;
     if (isSerialTerminalConfig(terminal)) {
-        treeNode = new TerminalTreeNode(terminal.name, terminal.options.path, vscode.TreeItemCollapsibleState.None, testbedPath);
+        treeNode = new TerminalTreeNode(terminal.name, terminal.options.path, vscode.TreeItemCollapsibleState.None, testbedPath, isDuplicate, parentTerminal);
     }
     else if (isSshTerminalConfig(terminal)) {
-        treeNode = new TerminalTreeNode(terminal.name, terminal.options.host, vscode.TreeItemCollapsibleState.None, testbedPath);
+        treeNode = new TerminalTreeNode(terminal.name, terminal.options.host, isDuplicate ? vscode.TreeItemCollapsibleState.None : vscode.TreeItemCollapsibleState.Collapsed, testbedPath, isDuplicate, parentTerminal);
     }
     else if (isTelnetTerminalConfig(terminal)) {
-        treeNode = new TerminalTreeNode(terminal.name, terminal.options.host, vscode.TreeItemCollapsibleState.None, testbedPath);
+        treeNode = new TerminalTreeNode(terminal.name, terminal.options.host, isDuplicate ? vscode.TreeItemCollapsibleState.None : vscode.TreeItemCollapsibleState.Collapsed, testbedPath, isDuplicate, parentTerminal);
     }
     else {
         const msg = l10n.t('xtp.terminal.listview.unsupported');
@@ -405,10 +525,15 @@ const terminalConfigurationProvider = new (class implements TreeDataProvider<Tre
     }
 
     updateItemStatus(item: TerminalTreeNode, status: string) {
-        // 格式: type:label:status
+        // 格式: type:label:status:isDuplicate
         const nodeType = item.type === 'testbed' ? 'testbed' : 'terminal';
-        item.contextValue = `xtp.terminal.terminalListTree.treeItem:${nodeType}:${item.label}:${status}`;
+        item.contextValue = `xtp.terminal.terminalListTree.treeItem:${nodeType}:${item.label}:${status}:${item.isDuplicate ? 'duplicate' : 'original'}`;
         this._onDidChangeTreeData.fire(item);
+    }
+
+    // 公共方法：触发树视图更新
+    refresh(element?: TerminalTreeNode) {
+        this._onDidChangeTreeData.fire(element);
     }
 })();
 
