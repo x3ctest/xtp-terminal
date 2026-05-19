@@ -321,9 +321,9 @@ export class NetworkTopologyEditorProvider implements vscode.CustomEditorProvide
             this.webviewPanels.delete(document.uri.toString());
             
             // 关闭该测试床中的所有已打开终端窗口
-            for (const terminal of terminals) {
-                vscode.commands.executeCommand('xtp.terminal.close', terminal.name);
-            }
+            //for (const terminal of terminals) {
+            //    vscode.commands.executeCommand('xtp.terminal.close', terminal.name);
+            //}
             
             // 从terminalListView中删除该文件对应的设备终端列表
             vscode.commands.executeCommand('xtp.terminal.removeTestbed', document.uri.fsPath);
@@ -490,6 +490,7 @@ export class NetworkTopologyEditorProvider implements vscode.CustomEditorProvide
                             '所有文件': ['*']
                         },
                         title: '选择私钥文件'
+                        defaultUri: vscode.Uri.file(require('os').homedir())
                     });
                     if (result && result.length > 0) {
                         webview.postMessage({

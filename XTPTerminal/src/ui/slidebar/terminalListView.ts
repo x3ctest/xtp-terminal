@@ -305,6 +305,12 @@ function registerTerminalListView(context: vscode.ExtensionContext) {
             terminalConfigurationProvider.removeTerminalFromTestbed(terminalName, testbedPath);
         }),
         vscode.commands.registerCommand('xtp.terminal.removeTestbed', (testbedPath: string) => {
+            const testbedData = terminalConfigurationProvider.testbeds.get(testbedPath);
+            if (testbedData) {
+                for (const terminal of testbedData.terminals) {
+                    terminalManager.close(terminal.name);
+                }
+            }
             terminalConfigurationProvider.removeTestbed(testbedPath);
         })
     );
