@@ -489,7 +489,7 @@ export class NetworkTopologyEditorProvider implements vscode.CustomEditorProvide
                             '私钥文件': ['pem', 'key', 'ppk'],
                             '所有文件': ['*']
                         },
-                        title: '选择私钥文件'
+                        title: '选择私钥文件',
                         defaultUri: vscode.Uri.file(require('os').homedir())
                     });
                     if (result && result.length > 0) {
