@@ -478,6 +478,29 @@ export class NetworkTopologyEditorProvider implements vscode.CustomEditorProvide
                     });
                 }
                 break;
+            case 'selectPrivateKeyFile':
+                // 处理选择私钥文件的请求
+                try {
+                    const result = await vscode.window.showOpenDialog({
+                        canSelectFiles: true,
+                        canSelectFolders: false,
+                        canSelectMany: false,
+                        filters: {
+                            '私钥文件': ['pem', 'key', 'ppk'],
+                            '所有文件': ['*']
+                        },
+                        title: '选择私钥文件'
+                    });
+                    if (result && result.length > 0) {
+                        webview.postMessage({
+                            command: 'privateKeyFileSelected',
+                            filePath: result[0].fsPath
+                        });
+                    }
+                } catch (error) {
+                    console.error('Failed to select private key file:', error);
+                }
+                break;
         }
     }
 

@@ -210,7 +210,10 @@
               </div>
               <div v-else class="form-group">
                 <label>私钥路径</label>
-                <input type="text" class="form-control" v-model="sshConfig.privateKeyPath" @input="updateTerminalConfig">
+                <div class="input-group">
+                  <input type="text" class="form-control" v-model="sshConfig.privateKeyPath" @input="updateTerminalConfig">
+                  <button type="button" class="btn btn-secondary" @click="selectPrivateKeyFile">...</button>
+                </div>
               </div>
               <div v-if="sshConfig.type === 'privateKey'" class="form-group">
                 <label>密码短语</label>
@@ -1707,11 +1710,23 @@ export default {
             console.log('Loaded serial ports:', this.serialPorts);
           }
           break;
+        case 'privateKeyFileSelected':
+          // 处理选择的私钥文件路径
+          if (message.filePath) {
+            this.sshConfig.privateKeyPath = message.filePath;
+            this.updateTerminalConfig();
+          }
+          break;
         //case 'runCode':
           // 处理来自VS Code的Run Code命令
           //this.runCode();
           //break;
       }
+    },
+    // 选择私钥文件
+    selectPrivateKeyFile() {
+      // 发送消息给VS Code，请求打开文件选择对话框
+      window.vscode.postMessage({ command: 'selectPrivateKeyFile' });
     }
   }
 };
@@ -1743,18 +1758,39 @@ export default {
 }
 
 .btn {
-  padding: 8px 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
   border: 1px solid var(--vscode-button-border);
   border-radius: 4px;
   background-color: var(--vscode-button-background);
   color: var(--vscode-button-foreground);
   cursor: pointer;
   font-family: var(--vscode-font-family);
-  font-size: var(--vscode-font-size);
+  font-size: 12px;
+  line-height: 1.5;
+  min-width: 22px;
+  user-select: none;
+  outline: none;
+  transition: background-color 0.15s ease;
 }
 
 .btn:hover {
   background-color: var(--vscode-button-hoverBackground);
+}
+
+.btn:active {
+  background-color: var(--vscode-button-secondaryBackground);
+}
+
+.btn:focus-visible {
+  box-shadow: 0 0 0 1px var(--vscode-focusBorder);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .btn-primary {
@@ -1765,6 +1801,16 @@ export default {
 
 .btn-primary:hover {
   background-color: var(--vscode-button-hoverBackground);
+}
+
+.btn-secondary {
+  background-color: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  border-color: var(--vscode-button-secondaryBackground);
+}
+
+.btn-secondary:hover {
+  background-color: var(--vscode-button-secondaryHoverBackground);
 }
 
 .editor-content {
@@ -1796,7 +1842,7 @@ html, body {
 }
 
 .properties-panel {
-  width: 210px;
+  width: 230px;
   padding: 10px;
   background-color: var(--vscode-sidebar-background);
   border-left: 1px solid var(--vscode-sidebar-border);
@@ -1830,6 +1876,22 @@ html, body {
   color: var(--vscode-input-foreground);
   font-family: var(--vscode-font-family);
   box-sizing: border-box;
+}
+
+.input-group {
+  display: flex;
+  gap: 4px;
+}
+
+.input-group .form-control {
+  flex: 1;
+  border-radius: 4px 0 0 4px;
+}
+
+.input-group .btn {
+  border-radius: 0 4px 4px 0;
+  border-left: none;
+  padding: 6px 12px;
 }
 
 select.form-control {
@@ -1986,7 +2048,7 @@ select.form-control {
 
 .device.selected {
   border: 2px solid var(--vscode-focusBorder);
-  box-shadow: 0 0 0 3px rgba(0, 122, 204, 0.4);
+  box-shadow: 0 0 0 3px rgba(7, 194, 22, 0.87);
   background-color: var(--vscode-focusBorder);
   z-index: 10;
 }

@@ -424,12 +424,14 @@ class SftpFileBrowserViewProvider implements vscode.WebviewViewProvider {
             return;
         }
 
-        // 选择要上传的文件
+        // 选择要上传的文件（强制使用本地文件系统）
         const fileUris = await vscode.window.showOpenDialog({
             title: '选择要上传的文件',
             canSelectFiles: true,
             canSelectFolders: false,
-            canSelectMany: true
+            canSelectMany: true,
+            // 指定本地路径作为默认目录，避免使用Remote SSH的远程路径
+            defaultUri: vscode.Uri.file(require('os').homedir())
         });
 
         if (!fileUris || fileUris.length === 0) {
