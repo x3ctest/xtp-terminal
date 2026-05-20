@@ -19,6 +19,7 @@ class SSHSession extends BaseSession {
         const pty : ssh.PseudoTtyOptions = {
             rows: 24,
             cols: 80,
+            term: 'xterm-256color',
         };
         // 请求一个交互式shell
         this.sshclient.shell(pty, (err, stream) => {

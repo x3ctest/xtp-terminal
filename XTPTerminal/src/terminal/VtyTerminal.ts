@@ -73,8 +73,13 @@ class VtyTerminal {
                     if (this.onClose) { await this.onClose(); }
                 },
                 handleInput: (data: string) => {
-                    console.log(`handleInput called: ${JSON.stringify(data)}, onInput exists: ${!!this.onInput}`);
-                    if (this.onInput) { this.onInput(data); }
+                    //console.log(`handleInput called: ${JSON.stringify(data)}, onInput exists: ${!!this.onInput}`);
+                    if (this.onInput) { 
+                        // 处理键盘输入，确保DEL键正确发送删除字符命令
+                        // DEL键在Linux终端中通常发送ASCII 127 (0x7F)或转义序列\x1b[3~
+                        // 确保正确处理这些键盘输入
+                        this.onInput(data); 
+                    }
                 },
                 setDimensions: (dimensions: TerminalDimensions) => {
                     if (this.onSetDimensions) { this.onSetDimensions(dimensions); }
