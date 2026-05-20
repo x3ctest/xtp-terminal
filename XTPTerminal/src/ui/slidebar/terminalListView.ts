@@ -278,7 +278,7 @@ function registerTerminalListView(context: vscode.ExtensionContext) {
                 });
                 
                 // 更新状态为 running
-                terminalConfigurationProvider.updateItemStatus(duplicateNode, "running");
+                //terminalConfigurationProvider.updateItemStatus(duplicateNode, "running");
                 
                 // 通知树视图数据已更改
                 terminalConfigurationProvider.refresh(sourceNode);
